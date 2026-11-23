@@ -1,0 +1,24 @@
+{
+  "short_name": "RoyalWedding",
+  "name": "Royal Wedding Photo Sharing",
+  "description": "Live photo sharing for Indian royal wedding celebrations",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/live",
+  "display": "standalone",
+  "theme_color": "#681D32",
+  "background_color": "#F7F0E4",
+  "orientation": "portrait"
+}

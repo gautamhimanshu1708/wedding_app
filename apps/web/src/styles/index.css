@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-burgundy: #681D32;
+    --color-gold: #C5A15B;
+    --color-ivory: #F7F0E4;
+    --color-brown: #30231F;
+    --color-champagne: #E8D8BD;
+  }
+
+  body {
+    background-color: #F7F0E4;
+    color: #30231F;
+    font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-royal {
+    font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+  }
+}
+
+/* Custom Royal Accents */
+.royal-gradient-gold {
+  background: linear-gradient(135deg, #E2CA92 0%, #C5A15B 50%, #A6843D 100%);
+}
+
+.royal-gradient-burgundy {
+  background: linear-gradient(145deg, #852842 0%, #681D32 50%, #4A1222 100%);
+}
+
+.royal-border-gold {
+  border: 1px solid rgba(197, 161, 91, 0.35);
+}
+
+.royal-shadow {
+  box-shadow: 0 4px 20px -2px rgba(104, 29, 50, 0.12), 0 2px 6px -1px rgba(197, 161, 91, 0.18);
+}
+
+.gold-glow {
+  filter: drop-shadow(0 0 8px rgba(197, 161, 91, 0.45));
+}
+
+/* Prevent image download & dragging context without blocking normal interactions */
+img {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Safe area insets for iOS / modern mobile screens */
+.safe-pb {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+}
+
+.safe-mb {
+  margin-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+}
+
+/* Subtle Shimmer Animation for Skeletons */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, rgba(239, 229, 211, 0.6) 25%, rgba(247, 240, 228, 0.9) 50%, rgba(239, 229, 211, 0.6) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
