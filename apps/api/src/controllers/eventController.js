@@ -4,20 +4,31 @@ import { createEventSchema } from '@wedding/shared';
 
 export async function getEvents(req, res, next) {
   try {
-    const weddingId = req.wedding._id;
+    const weddingId = req.wedding?._id || req.params.weddingId;
+    if (!weddingId) {
+      return res.status(400).json({ success: false, error: 'Wedding ID required' });
+    }
     const events = await WeddingEvent.find({ weddingId }).sort({ date: 1 }).lean();
 
-    // Fetch photo counts for each event
-    const photoCounts = await Photo.aggregate([
-      { $match: { weddingId, publicationStatus: 'published' } },
-      { $group: { _id: '$eventId', count: { $sum: 1 } } },
-    ]);
+    // Fetch photo counts for each event safely
+    let countMap = new Map();
+    try {
+      const photoCounts = await Photo.aggregate([
+        { $match: { weddingId, publicationStatus: 'published' } },
+        { $group: { _id: '$eventId', count: { $sum: 1 } } },
+      ]);
+      countMap = new Map(
+        photoCounts
+          .filter((p) => p._id != null)
+          .map((p) => [p._id.toString(), p.count])
+      );
+    } catch (aggErr) {
+      // Aggregation fallback for memory store
+    }
 
-    const countMap = new Map(photoCounts.map((p) => [p._id.toString(), p.count]));
-
-    const eventsWithCounts = events.map((event) => ({
+    const eventsWithCounts = (events || []).map((event) => ({
       ...event,
-      photoCount: countMap.get(event._id.toString()) || 0,
+      photoCount: countMap.get(event._id?.toString()) || 0,
     }));
 
     res.json({
@@ -31,10 +42,15 @@ export async function getEvents(req, res, next) {
 
 export async function createEvent(req, res, next) {
   try {
+    const weddingId = req.wedding?._id || req.wedding?.id || req.params.weddingId;
+    if (!weddingId) {
+      return res.status(400).json({ success: false, error: 'Wedding context missing. Please refresh and try again.' });
+    }
+
     const validated = createEventSchema.parse(req.body);
     const event = await WeddingEvent.create({
       ...validated,
-      weddingId: req.wedding._id,
+      weddingId,
     });
 
     res.status(201).json({

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: royal-wedding-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run start --workspace=apps/api
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000

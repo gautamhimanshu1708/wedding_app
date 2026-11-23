@@ -171,7 +171,17 @@ export class MemoryQuery {
 
 export class MemorySingleQuery {
   constructor(item) {
-    this.item = item ? { ...item } : null;
+    if (item) {
+      this.item = item;
+      if (!this.item.save) {
+        this.item.save = async function () { return this; };
+      }
+      if (!this.item.toObject) {
+        this.item.toObject = function () { return { ...this }; };
+      }
+    } else {
+      this.item = null;
+    }
   }
 
   populate(field) {

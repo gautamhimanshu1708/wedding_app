@@ -14,7 +14,9 @@ class SocketService {
 
     if (!token) return null;
 
-    this.socket = io({
+    const serverUrl = import.meta.env.VITE_API_URL || undefined;
+
+    this.socket = io(serverUrl, {
       auth: { token },
       autoConnect: true,
       reconnection: true,

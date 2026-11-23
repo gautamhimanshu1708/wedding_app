@@ -44,6 +44,14 @@ export const WeddingEvent = {
     return new MemorySingleQuery(found);
   },
 
+  findById(id) {
+    if (isDbConnected()) {
+      return MongooseEvent.findById(id);
+    }
+    const found = memoryStore.events.find((e) => e._id === id || e._id === id?.toString());
+    return new MemorySingleQuery(found);
+  },
+
   async findOneAndDelete(query) {
     if (isDbConnected()) {
       return MongooseEvent.findOneAndDelete(query);

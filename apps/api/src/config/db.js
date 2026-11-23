@@ -12,16 +12,22 @@ export async function connectDB() {
   }
 
   try {
-    const conn = await mongoose.connect(ENV.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000, // 5s check for MongoDB Atlas / remote connections
-      autoIndex: true,
+    const connectPromise = mongoose.connect(ENV.MONGODB_URI, {
+      serverSelectionTimeoutMS: 2000,
+      connectTimeoutMS: 2000,
+      autoIndex: false,
     });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Connection attempt timed out')), 2000)
+    );
+
+    const conn = await Promise.race([connectPromise, timeoutPromise]);
     isConnected = true;
     console.log(`[Database] MongoDB Connected: ${conn.connection.host}`);
     return true;
   } catch (err) {
     isConnected = false;
-    console.log(`[Database] Notice: No live MongoDB detected at ${ENV.MONGODB_URI}.`);
+    console.log(`[Database] Notice: Remote DB unavailable (${err.message}).`);
     console.log('[Database] Operating seamlessly with built-in zero-config In-Memory Wedding Store.');
     return false;
   }

@@ -21,7 +21,7 @@ export default function App() {
       <Route path="/" element={<Navigate to="/w/royal-udaipur-2026" replace />} />
 
       {/* 2. Authentication Screen */}
-      <Route path="/auth" element={<AuthPage />} />
+      <Route path="/auth/*" element={<AuthPage />} />
 
       {/* 3. Protected Mobile Guest Application */}
       <Route element={<MobileLayout />}>

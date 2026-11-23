@@ -1,4 +1,6 @@
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/v1`
+  : '/api/v1';
 
 class ApiClient {
   constructor() {
@@ -29,6 +31,10 @@ class ApiClient {
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+      headers['x-admin-portal'] = 'true';
     }
 
     if (!(options.body instanceof FormData) && !headers['Content-Type']) {

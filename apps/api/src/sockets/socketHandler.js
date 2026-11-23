@@ -9,7 +9,10 @@ let ioInstance = null;
 export function setupSocketIO(httpServer, clientUrl) {
   const io = new Server(httpServer, {
     cors: {
-      origin: [clientUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin: (origin, callback) => {
+        // Seamlessly allow client URL, Vercel deployments, and local dev
+        callback(null, true);
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },

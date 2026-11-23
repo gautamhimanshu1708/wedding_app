@@ -6,6 +6,7 @@ import invitationRoutes from './invitationRoutes.js';
 import photoRoutes from './photoRoutes.js';
 import moderationRoutes from './moderationRoutes.js';
 import guestMessageRoutes from './guestMessageRoutes.js';
+import qrRoutes from './qrRoutes.js';
 
 const apiRouter = Router();
 
@@ -16,6 +17,7 @@ apiRouter.use('/weddings', eventRoutes);
 apiRouter.use('/weddings', photoRoutes);
 apiRouter.use('/weddings', moderationRoutes);
 apiRouter.use('/weddings', guestMessageRoutes);
+apiRouter.use('/qr', qrRoutes);
 apiRouter.use('/invitations', invitationRoutes);
 
 export default apiRouter;

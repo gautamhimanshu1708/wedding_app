@@ -164,11 +164,11 @@ export async function uploadDirect(req, res, next) {
         const displayKey = `weddings/${weddingId}/photos/${photoId}/display.webp`;
         const thumbKey = `weddings/${weddingId}/photos/${photoId}/thumb.webp`;
 
-        // 2. Persist to Cloudflare R2 / Storage
+        // 2. Persist to Cloudflare R2 / Google Drive / Local Storage
         await Promise.all([
-          StorageService.putObject(originalKey, processed.originalBuffer, file.mimetype),
-          StorageService.putObject(displayKey, processed.displayBuffer, 'image/webp'),
-          StorageService.putObject(thumbKey, processed.thumbnailBuffer, 'image/webp'),
+          StorageService.putObject(originalKey, processed.originalBuffer, file.mimetype, req.wedding),
+          StorageService.putObject(displayKey, processed.displayBuffer, 'image/webp', req.wedding),
+          StorageService.putObject(thumbKey, processed.thumbnailBuffer, 'image/webp', req.wedding),
         ]);
 
         // 3. Create Photo Record in MongoDB - Automatically Published!

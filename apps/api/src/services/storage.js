@@ -6,7 +6,6 @@ import { fileURLToPath } from 'url';
 import { ENV } from '../config/env.js';
 import {
   isGoogleDriveConfigured as _isDrive,
-  initPromise as driveInitPromise,
   driveUpload,
   driveGetUrl,
   driveDelete,
@@ -59,7 +58,7 @@ export class StorageService {
    * For Google Drive, key format: "<weddingId>/<type>/<filename>"
    * Returns the storage key (or Drive fileId for Drive backend).
    */
-  static async putObject(key, buffer, contentType = 'image/webp') {
+  static async putObject(key, buffer, contentType = 'image/webp', wedding = null) {
     if (isR2Configured && s3Client) {
       const command = new PutObjectCommand({
         Bucket: ENV.R2_BUCKET_NAME,
@@ -71,15 +70,17 @@ export class StorageService {
       return key;
     }
 
-    // Google Drive backend
-    await driveInitPromise;
-    if (_isDrive) {
-      const parts = key.split('/');
-      const weddingId = parts[0] || null;
-      const fileName = parts[parts.length - 1];
-      const fileData = await driveUpload(buffer, fileName, contentType, weddingId);
-      // Return the Drive file ID prefixed so we can detect it later
-      return `gdrive:${fileData.id}`;
+    // Google Drive backend (configured via portal settings or .env)
+    const useWeddingDrive = wedding?.driveConfig?.isConnected && wedding.driveConfig.storageMode === 'google_drive';
+    if (useWeddingDrive || _isDrive) {
+      try {
+        const parts = key.split('/');
+        const fileName = parts[parts.length - 1];
+        const fileData = await driveUpload(buffer, fileName, contentType, wedding);
+        return `gdrive:${fileData.id}`;
+      } catch (driveErr) {
+        console.warn('[Storage] Google Drive upload failed, falling back to local storage:', driveErr.message);
+      }
     }
 
     // Local fallback
@@ -95,7 +96,7 @@ export class StorageService {
   /**
    * Get an accessible URL for a stored object
    */
-  static async getObjectUrl(key, expiresIn = 3600) {
+  static async getObjectUrl(key, expiresIn = 3600, wedding = null) {
     if (!key) return null;
 
     // Already an external URL
@@ -104,7 +105,7 @@ export class StorageService {
     // Google Drive file
     if (key.startsWith('gdrive:')) {
       const fileId = key.replace('gdrive:', '');
-      return driveGetUrl(fileId);
+      return driveGetUrl(fileId, wedding);
     }
 
     if (isR2Configured && s3Client) {

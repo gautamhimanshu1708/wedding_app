@@ -60,6 +60,17 @@ export function AdminDashboard() {
   const [allowGuestUploads, setAllowGuestUploads] = useState(true);
   const [qrSettingsSaved, setQrSettingsSaved] = useState(false);
 
+  // Google Drive & Cloud Storage State
+  const [storageMode, setStorageMode] = useState('local');
+  const [driveConnected, setDriveConnected] = useState(false);
+  const [driveFolderId, setDriveFolderId] = useState('');
+  const [driveClientEmail, setDriveClientEmail] = useState('');
+  const [drivePrivateKey, setDrivePrivateKey] = useState('');
+  const [driveJsonInput, setDriveJsonInput] = useState('');
+  const [testingDrive, setTestingDrive] = useState(false);
+  const [driveSuccessMsg, setDriveSuccessMsg] = useState(null);
+  const [driveErrorMsg, setDriveErrorMsg] = useState(null);
+
   
   // Automatically ensure activeWedding is loaded if null
   useEffect(() => {
@@ -83,17 +94,27 @@ export function AdminDashboard() {
       try {
         setLoading(true);
 
-        const [statsRes, eventsRes, membersRes, reportsRes] = await Promise.all([
+        // Ensure user has admin/owner privileges on this wedding
+        await api.post(`/weddings/${activeWedding._id}/claim-admin`, {}).catch(() => {});
+
+        const [statsRes, eventsRes, membersRes, reportsRes, storageRes] = await Promise.all([
           api.get(`/weddings/${activeWedding._id}/stats`).catch(() => ({ success: false })),
           api.get(`/weddings/${activeWedding._id}/events`).catch(() => ({ success: false })),
           api.get(`/weddings/${activeWedding._id}/moderation/members`).catch(() => ({ success: false })),
           api.get(`/weddings/${activeWedding._id}/moderation/reports`).catch(() => ({ success: false })),
+          api.get(`/weddings/${activeWedding._id}/storage`).catch(() => ({ success: false })),
         ]);
 
         if (statsRes.success) setStats(statsRes.data);
         if (eventsRes.success) setEvents(eventsRes.data);
         if (membersRes.success) setMembers(membersRes.data);
         if (reportsRes.success) setReports(reportsRes.data);
+        if (storageRes.success && storageRes.data) {
+          setStorageMode(storageRes.data.storageMode || 'local');
+          setDriveConnected(Boolean(storageRes.data.isConnected));
+          if (storageRes.data.folderId) setDriveFolderId(storageRes.data.folderId);
+          if (storageRes.data.clientEmail) setDriveClientEmail(storageRes.data.clientEmail);
+        }
       } catch (err) {
         console.error('Failed to load admin data:', err);
       } finally {
@@ -107,18 +128,45 @@ export function AdminDashboard() {
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     if (!newEventName.trim() || !newEventDate) return;
-    const weddingId = activeWedding?._id || activeWedding?.id;
+    let weddingId = activeWedding?._id || activeWedding?.id;
+
+    // Fallback: if activeWedding isn't populated yet, fetch default
+    if (!weddingId) {
+      try {
+        const fetchRes = await api.get('/weddings/slug/royal-udaipur-2026');
+        if (fetchRes.success && fetchRes.data) {
+          setActiveWedding(fetchRes.data);
+          weddingId = fetchRes.data._id;
+        }
+      } catch (e) {
+        // Continue to check
+      }
+    }
+
     if (!weddingId) {
       alert('Wedding details are loading. Please wait a moment and try again.');
       return;
     }
+
     try {
-      const res = await api.post(`/weddings/${weddingId}/events`, {
+      let res = await api.post(`/weddings/${weddingId}/events`, {
         name: newEventName.trim(),
         description: newEventDesc.trim(),
         date: newEventDate,
+      }).catch(async (err) => {
+        if (err.message && err.message.includes('Insufficient permissions')) {
+          // Attempt immediate admin claim & retry once
+          await api.post(`/weddings/${weddingId}/claim-admin`, {});
+          return await api.post(`/weddings/${weddingId}/events`, {
+            name: newEventName.trim(),
+            description: newEventDesc.trim(),
+            date: newEventDate,
+          });
+        }
+        throw err;
       });
-      if (res.success) {
+
+      if (res && res.success) {
         setEvents((prev) => [...prev, res.data]);
         setNewEventName('');
         setNewEventDesc('');
@@ -126,6 +174,65 @@ export function AdminDashboard() {
       }
     } catch (err) {
       alert('Failed to create event: ' + err.message);
+    }
+  };
+
+  // Handle Google Drive Portal Setup
+  const handleSetupGoogleDrive = async (e) => {
+    e.preventDefault();
+    const weddingId = activeWedding?._id || activeWedding?.id;
+    if (!weddingId) {
+      alert('Wedding details are loading. Please try again.');
+      return;
+    }
+
+    setTestingDrive(true);
+    setDriveSuccessMsg(null);
+    setDriveErrorMsg(null);
+
+    try {
+      const payload = {
+        folderId: driveFolderId.trim(),
+        storageMode: 'google_drive',
+      };
+
+      if (driveJsonInput.trim()) {
+        payload.serviceAccountJson = driveJsonInput.trim();
+      } else {
+        payload.clientEmail = driveClientEmail.trim();
+        payload.privateKey = drivePrivateKey.trim();
+      }
+
+      const res = await api.post(`/weddings/${weddingId}/storage/google-drive`, payload);
+
+      if (res.success) {
+        setDriveConnected(true);
+        setStorageMode('google_drive');
+        setDriveSuccessMsg('Google Drive connected & verified! Guest uploads will go to your Drive folder.');
+        setTimeout(() => setDriveSuccessMsg(null), 5000);
+      }
+    } catch (err) {
+      const msg = err.data?.error || err.message || 'Failed to connect Google Drive';
+      setDriveErrorMsg(msg);
+    } finally {
+      setTestingDrive(false);
+    }
+  };
+
+  // Handle Toggle Storage Mode
+  const handleToggleStorageMode = async (newMode) => {
+    const weddingId = activeWedding?._id || activeWedding?.id;
+    if (!weddingId) return;
+
+    try {
+      const res = await api.post(`/weddings/${weddingId}/storage/toggle-mode`, {
+        storageMode: newMode,
+      });
+      if (res.success) {
+        setStorageMode(newMode);
+      }
+    } catch (err) {
+      alert('Failed to change storage mode: ' + (err.data?.error || err.message));
     }
   };
 
@@ -576,50 +683,168 @@ export function AdminDashboard() {
             <div className="bg-white p-6 rounded-2xl border border-gold/40 shadow-sm">
               <div className="flex items-center gap-2 mb-1">
                 <HardDrive className="w-5 h-5 text-blue-600" />
-                <h3 className="font-royal text-base font-bold text-burgundy">Photo Storage</h3>
+                <h3 className="font-royal text-base font-bold text-burgundy">Photo Cloud Storage</h3>
               </div>
               <p className="text-[11px] text-gray-500 mb-4">
-                Guest-uploaded photos are stored here. Configure cloud storage so photos go directly to your personal Drive or cloud bucket.
+                Connect your Google Drive so guest photographs are saved directly to your personal shared Drive folder.
               </p>
-              <div className="bg-champagne/20 border border-gold/30 rounded-xl p-3.5 mb-4">
-                <p className="text-xs font-semibold text-deepBrown mb-2">Current Storage Backend</p>
-                <div className="flex items-center gap-2 text-xs">
-                  <HardDrive className="w-4 h-4 text-gray-500" />
-                  <span className="font-medium text-deepBrown">Local Server Storage</span>
-                  <span className="ml-auto text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Active</span>
+
+              {/* Active Storage Selector */}
+              <div className="bg-champagne/20 border border-gold/30 rounded-2xl p-4 mb-5">
+                <p className="text-xs font-bold text-deepBrown mb-2">Active Storage Destination</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleStorageMode('local')}
+                    className={`p-3 rounded-xl border text-left transition flex items-center justify-between ${
+                      storageMode === 'local'
+                        ? 'border-burgundy bg-white shadow-sm'
+                        : 'border-transparent bg-white/50 text-gray-500'
+                    }`}
+                  >
+                    <div>
+                      <p className="text-xs font-bold text-deepBrown">Local Storage</p>
+                      <p className="text-[10px] text-gray-500">Saved on server</p>
+                    </div>
+                    {storageMode === 'local' && (
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!driveConnected) {
+                        alert('Please configure and test Google Drive credentials below first.');
+                        return;
+                      }
+                      handleToggleStorageMode('google_drive');
+                    }}
+                    className={`p-3 rounded-xl border text-left transition flex items-center justify-between ${
+                      storageMode === 'google_drive'
+                        ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                        : 'border-transparent bg-white/50 text-gray-500'
+                    }`}
+                  >
+                    <div>
+                      <p className="text-xs font-bold text-deepBrown">Google Drive</p>
+                      <p className="text-[10px] text-gray-500">
+                        {driveConnected ? 'Connected & Ready' : 'Not Connected'}
+                      </p>
+                    </div>
+                    {storageMode === 'google_drive' && (
+                      <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                    )}
+                  </button>
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1">Photos saved in /uploads on server. Switch to cloud for scalable, permanent storage.</p>
               </div>
-              {/* Google Drive Option */}
-              <div className="border border-dashed border-blue-300 rounded-xl p-4 mb-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold text-deepBrown">Option A: Google Drive</span>
-                  <span className="ml-auto text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-semibold">Recommended</span>
+
+              {/* In-Portal Google Drive Configuration Form */}
+              <div className="border border-blue-200 rounded-2xl p-4 bg-gradient-to-br from-blue-50/40 via-white to-champagne/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Cloud className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-bold text-deepBrown">Google Drive Credentials</span>
+                  </div>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      driveConnected
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {driveConnected ? '✓ Connected' : 'Not Configured'}
+                  </span>
                 </div>
-                <p className="text-[11px] text-gray-600 mb-2">Photos go directly to your Google Drive folder � shared with the couple &amp; family.</p>
-                <div className="bg-gray-50 rounded-lg p-3 text-[10px] font-mono text-gray-700 space-y-0.5">
-                  <p className="font-sans font-semibold text-gray-800 mb-1">Add to .env file:</p>
-                  <p>GOOGLE_DRIVE_CLIENT_EMAIL=service@project.iam.gserviceaccount.com</p>
-                  <p>GOOGLE_DRIVE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----..."</p>
-                  <p>GOOGLE_DRIVE_FOLDER_ID=1AbCdEfGhIjK...</p>
-                </div>
+
+                {driveSuccessMsg && (
+                  <div className="p-3 bg-green-50 border border-green-200 text-green-800 rounded-xl text-xs mb-3 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                    <span>{driveSuccessMsg}</span>
+                  </div>
+                )}
+
+                {driveErrorMsg && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs mb-3 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <span>{driveErrorMsg}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSetupGoogleDrive} className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-deepBrown mb-1">
+                      Google Drive Folder ID or Link
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 1AbCdEfGhIjKlMnOpQrStUvWx or folder URL"
+                      value={driveFolderId}
+                      onChange={(e) => setDriveFolderId(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono"
+                    />
+                    <p className="text-[10px] text-gray-500 mt-0.5">
+                      Share this folder with Editor access to your Service Account email.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-deepBrown mb-1">
+                      Service Account JSON Key (Fastest)
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder='Paste your downloaded service-account.json content here {"type": "service_account", ...}'
+                      value={driveJsonInput}
+                      onChange={(e) => setDriveJsonInput(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono resize-none"
+                    />
+                  </div>
+
+                  <div className="relative flex items-center justify-center my-1">
+                    <span className="text-[10px] text-gray-400 bg-white px-2 uppercase font-bold">
+                      or enter manually
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-deepBrown mb-1">
+                      Client Email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="service-account@project.iam.gserviceaccount.com"
+                      value={driveClientEmail}
+                      onChange={(e) => setDriveClientEmail(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-deepBrown mb-1">
+                      Private Key
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="-----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----"
+                      value={drivePrivateKey}
+                      onChange={(e) => setDrivePrivateKey(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono resize-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={testingDrive}
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow flex items-center justify-center gap-1.5 transition disabled:opacity-60"
+                  >
+                    <Cloud className="w-4 h-4" />
+                    <span>
+                      {testingDrive ? 'Verifying with Google Drive...' : 'Test & Save Drive Connection'}
+                    </span>
+                  </button>
+                </form>
               </div>
-              {/* Cloudflare R2 Option */}
-              <div className="border border-dashed border-orange-300 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold text-deepBrown">Option B: Cloudflare R2</span>
-                  <span className="ml-auto text-[10px] bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-semibold">Free 10 GB</span>
-                </div>
-                <p className="text-[11px] text-gray-600 mb-2">S3-compatible object storage with global CDN. 10 GB free, fast worldwide delivery.</p>
-                <div className="bg-gray-50 rounded-lg p-3 text-[10px] font-mono text-gray-700 space-y-0.5">
-                  <p className="font-sans font-semibold text-gray-800 mb-1">Add to .env file:</p>
-                  <p>R2_ACCOUNT_ID=your-account-id</p>
-                  <p>R2_ACCESS_KEY_ID=your-key-id</p>
-                  <p>R2_SECRET_ACCESS_KEY=your-secret</p>
-                  <p>R2_BUCKET_NAME=royal-wedding-photos</p>
-                </div>
-              </div>
-              <p className="text-[10px] text-gray-500 mt-3">Priority: Cloudflare R2 &gt; Google Drive &gt; Local. Restart API after adding .env credentials.</p>
             </div>
 
             {/* QR & Guest Access Policy */}

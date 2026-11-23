@@ -1,34 +1,92 @@
 /**
  * Google Drive Storage Provider
- * 
- * Setup:
- *  1. Create a Google Cloud project and enable the Drive API.
- *  2. Create a Service Account, download the JSON key file.
- *  3. Add these env vars to your .env:
- *       GOOGLE_DRIVE_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
- *       GOOGLE_DRIVE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
- *       GOOGLE_DRIVE_FOLDER_ID=1AbCdEfGhIjKlMnOpQrStUvWx  (a shared Drive folder)
- *  4. Share the Google Drive folder with the service account email (Editor access).
- *  5. All guest photo uploads will appear in that shared folder.
- * 
- * OR:
- *  Use GOOGLE_DRIVE_KEYFILE_PATH=/path/to/keyfile.json instead of CLIENT_EMAIL + PRIVATE_KEY.
+ * Supports both environment-level credentials and per-wedding in-portal credentials.
  */
 
 import { Readable } from 'stream';
 import { ENV } from '../config/env.js';
 
-let drive = null;
+let defaultDrive = null;
 let isGoogleDriveConfigured = false;
 
-async function initGoogleDrive() {
-  const { GOOGLE_DRIVE_CLIENT_EMAIL, GOOGLE_DRIVE_PRIVATE_KEY, GOOGLE_DRIVE_KEYFILE_PATH } = ENV;
+async function getGoogleLib() {
+  return await import('googleapis');
+}
 
-  if (!GOOGLE_DRIVE_CLIENT_EMAIL && !GOOGLE_DRIVE_KEYFILE_PATH) return false;
+/**
+ * Test a given set of Google Drive credentials
+ */
+export async function testDriveConfig({ clientEmail, privateKey, folderId }) {
+  try {
+    const { google } = await getGoogleLib();
+    const formattedKey = privateKey.includes('\n') ? privateKey : privateKey.replace(/\\n/g, '\n');
+
+    const auth = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: clientEmail,
+        private_key: formattedKey,
+      },
+      scopes: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive.metadata.readonly'],
+    });
+
+    const testDrive = google.drive({ version: 'v3', auth });
+
+    if (folderId) {
+      // Verify folder exists and is accessible
+      await testDrive.files.get({ fileId: folderId, fields: 'id, name, capabilities' });
+    } else {
+      // Verify basic API access
+      await testDrive.files.list({ pageSize: 1, fields: 'files(id)' });
+    }
+
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err.message || 'Failed to authenticate with Google Drive using the provided credentials.',
+    };
+  }
+}
+
+/**
+ * Create or retrieve a Drive client for a specific wedding or fallback to default
+ */
+export async function getDriveClient(wedding = null) {
+  const { google } = await getGoogleLib();
+
+  // 1. Check if wedding has dynamic portal-configured Drive credentials
+  if (wedding?.driveConfig?.isConnected && wedding.driveConfig.clientEmail && wedding.driveConfig.privateKey) {
+    try {
+      const formattedKey = wedding.driveConfig.privateKey.includes('\n')
+        ? wedding.driveConfig.privateKey
+        : wedding.driveConfig.privateKey.replace(/\\n/g, '\n');
+
+      const auth = new google.auth.GoogleAuth({
+        credentials: {
+          client_email: wedding.driveConfig.clientEmail,
+          private_key: formattedKey,
+        },
+        scopes: ['https://www.googleapis.com/auth/drive.file'],
+      });
+
+      return {
+        drive: google.drive({ version: 'v3', auth }),
+        rootFolderId: wedding.driveConfig.folderId || 'root',
+      };
+    } catch (err) {
+      console.warn('[Storage] Failed to instantiate wedding custom Drive client:', err.message);
+    }
+  }
+
+  // 2. Fallback to server .env credentials
+  if (defaultDrive) {
+    return { drive: defaultDrive, rootFolderId: ENV.GOOGLE_DRIVE_FOLDER_ID || 'root' };
+  }
+
+  const { GOOGLE_DRIVE_CLIENT_EMAIL, GOOGLE_DRIVE_PRIVATE_KEY, GOOGLE_DRIVE_KEYFILE_PATH } = ENV;
+  if (!GOOGLE_DRIVE_CLIENT_EMAIL && !GOOGLE_DRIVE_KEYFILE_PATH) return null;
 
   try {
-    const { google } = await import('googleapis');
-
     let auth;
     if (GOOGLE_DRIVE_KEYFILE_PATH) {
       auth = new google.auth.GoogleAuth({
@@ -45,31 +103,27 @@ async function initGoogleDrive() {
       });
     }
 
-    drive = google.drive({ version: 'v3', auth });
-    console.log('[Storage] Google Drive initialized. Folder:', ENV.GOOGLE_DRIVE_FOLDER_ID || 'root');
-    return true;
+    defaultDrive = google.drive({ version: 'v3', auth });
+    isGoogleDriveConfigured = true;
+    return { drive: defaultDrive, rootFolderId: ENV.GOOGLE_DRIVE_FOLDER_ID || 'root' };
   } catch (err) {
     console.error('[Storage] Google Drive init failed:', err.message);
-    return false;
+    return null;
   }
 }
 
-// Initialize on first import
-const initPromise = initGoogleDrive().then((ok) => {
-  isGoogleDriveConfigured = ok;
-});
-
-export { isGoogleDriveConfigured, initPromise };
-
 /**
  * Upload a buffer to Google Drive
- * Returns the file ID (used as the storage key)
  */
-export async function driveUpload(buffer, fileName, mimeType = 'image/webp', weddingId = null) {
-  await initPromise;
-  if (!drive) throw new Error('Google Drive not configured');
+export async function driveUpload(buffer, fileName, mimeType = 'image/webp', wedding = null) {
+  const clientInfo = await getDriveClient(wedding);
+  if (!clientInfo || !clientInfo.drive) {
+    throw new Error('Google Drive is not configured or accessible.');
+  }
 
-  const folderId = await ensureWeddingFolder(weddingId);
+  const { drive, rootFolderId } = clientInfo;
+  const weddingId = wedding?._id || wedding?.id;
+  const folderId = await ensureWeddingFolder(drive, rootFolderId, weddingId);
 
   const fileMetadata = {
     name: fileName,
@@ -91,23 +145,19 @@ export async function driveUpload(buffer, fileName, mimeType = 'image/webp', wed
 }
 
 /**
- * Get a public/shareable URL for a Drive file
+ * Get a direct public URL for a Drive file
  */
-export async function driveGetUrl(fileId) {
-  await initPromise;
-  if (!drive) return null;
+export async function driveGetUrl(fileId, wedding = null) {
+  const clientInfo = await getDriveClient(wedding);
+  if (!clientInfo || !clientInfo.drive || !fileId) return null;
 
   try {
-    // Make file publicly readable
-    await drive.permissions.create({
+    await clientInfo.drive.permissions.create({
       fileId,
       requestBody: { role: 'reader', type: 'anyone' },
     });
-
-    // Return direct download URL
     return `https://drive.google.com/uc?export=view&id=${fileId}`;
   } catch (err) {
-    console.error('[Drive] getUrl error:', err.message);
     return `https://drive.google.com/file/d/${fileId}/view`;
   }
 }
@@ -115,44 +165,47 @@ export async function driveGetUrl(fileId) {
 /**
  * Delete a file from Google Drive
  */
-export async function driveDelete(fileId) {
-  await initPromise;
-  if (!drive || !fileId) return;
+export async function driveDelete(fileId, wedding = null) {
+  const clientInfo = await getDriveClient(wedding);
+  if (!clientInfo || !clientInfo.drive || !fileId) return;
 
   try {
-    await drive.files.delete({ fileId });
+    await clientInfo.drive.files.delete({ fileId });
   } catch (err) {
     console.error('[Drive] delete error:', err.message);
   }
 }
 
 /**
- * Ensure a per-wedding subfolder exists under the root Drive folder.
- * Returns the folder ID to upload into.
+ * Ensure a subfolder exists under root
  */
-async function ensureWeddingFolder(weddingId) {
-  const rootFolderId = ENV.GOOGLE_DRIVE_FOLDER_ID || 'root';
+async function ensureWeddingFolder(drive, rootFolderId, weddingId) {
   if (!weddingId) return rootFolderId;
-
   const folderName = `Wedding_${weddingId}`;
 
-  // Check if folder already exists
-  const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${rootFolderId}' in parents and trashed=false`;
-  const existing = await drive.files.list({ q: query, fields: 'files(id, name)', spaces: 'drive' });
+  try {
+    const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${rootFolderId}' in parents and trashed=false`;
+    const existing = await drive.files.list({ q: query, fields: 'files(id, name)', spaces: 'drive' });
 
-  if (existing.data.files?.length > 0) {
-    return existing.data.files[0].id;
+    if (existing.data.files?.length > 0) {
+      return existing.data.files[0].id;
+    }
+
+    const folder = await drive.files.create({
+      requestBody: {
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [rootFolderId],
+      },
+      fields: 'id',
+    });
+
+    return folder.data.id;
+  } catch (e) {
+    return rootFolderId;
   }
-
-  // Create the folder
-  const folder = await drive.files.create({
-    requestBody: {
-      name: folderName,
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [rootFolderId],
-    },
-    fields: 'id',
-  });
-
-  return folder.data.id;
 }
+
+const initPromise = Promise.resolve(true);
+
+export { isGoogleDriveConfigured, initPromise };

@@ -28,6 +28,14 @@ const weddingSchema = new mongoose.Schema(
       maxPhotosPerGuest: { type: Number, default: 200 },
       isPrivate: { type: Boolean, default: false },
     },
+    driveConfig: {
+      folderId: { type: String, default: '' },
+      clientEmail: { type: String, default: '' },
+      privateKey: { type: String, default: '' },
+      isConnected: { type: Boolean, default: false },
+      connectedAt: { type: Date },
+      storageMode: { type: String, enum: ['local', 'google_drive'], default: 'local' },
+    },
     status: { type: String, enum: ['active', 'archived', 'draft'], default: 'active' },
   },
   { timestamps: true }

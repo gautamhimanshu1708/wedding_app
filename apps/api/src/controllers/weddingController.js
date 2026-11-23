@@ -270,3 +270,53 @@ export async function getWeddingStats(req, res, next) {
     next(err);
   }
 }
+
+/**
+ * Claim or elevate admin/owner role for a wedding.
+ * Used when couple/admin enters the Admin Dashboard.
+ */
+export async function claimAdminRole(req, res, next) {
+  try {
+    const weddingId = req.params.weddingId || req.params.id;
+    let wedding = await Wedding.findById(weddingId);
+    if (!wedding) {
+      wedding = await Wedding.findOne({ slug: weddingId.toString().toLowerCase() });
+    }
+    if (!wedding) {
+      return res.status(404).json({ success: false, error: 'Wedding not found' });
+    }
+
+    let membership = await Membership.findOne({
+      weddingId: wedding._id,
+      userId: req.user._id,
+    });
+
+    if (!membership) {
+      membership = await Membership.create({
+        weddingId: wedding._id,
+        userId: req.user._id,
+        role: ROLES.OWNER,
+        status: 'active',
+      });
+    } else {
+      membership.role = ROLES.OWNER;
+      await membership.save();
+    }
+
+    // Link ownership if seed default
+    if (!wedding.ownerId || wedding.ownerId === 'user_royal_owner_001') {
+      wedding.ownerId = req.user._id;
+      try { await wedding.save(); } catch (e) {}
+    }
+
+    res.json({
+      success: true,
+      data: {
+        membership,
+        role: ROLES.OWNER,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
