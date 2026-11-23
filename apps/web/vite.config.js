@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@wedding/shared': path.resolve(__dirname, './src/shared/index.js'),
     },
   },
   server: {
