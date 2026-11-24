@@ -24,6 +24,10 @@ const photoSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// High-speed compound indexes for live feed and ceremony galleries
+photoSchema.index({ weddingId: 1, publicationStatus: 1, createdAt: -1 });
+photoSchema.index({ weddingId: 1, eventId: 1, publicationStatus: 1, createdAt: -1 });
+
 const MongoosePhoto = mongoose.model('Photo', photoSchema);
 
 export const Photo = {

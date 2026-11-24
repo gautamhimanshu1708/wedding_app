@@ -18,6 +18,13 @@ const queryClient = new QueryClient({
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
+// Pre-warm backend API immediately in the background on initial page boot
+const API_BASE = import.meta.env.VITE_API_URL || '';
+if (typeof window !== 'undefined') {
+  const healthUrl = API_BASE ? `${API_BASE.replace(/\/$/, '')}/api/health` : '/api/health';
+  fetch(healthUrl, { method: 'GET', keepalive: true }).catch(() => {});
+}
+
 // If Clerk key is present and login is NOT paused, wrap with ClerkProvider
 // Otherwise fall back to frictionless local bypass testing
 function AppRoot() {

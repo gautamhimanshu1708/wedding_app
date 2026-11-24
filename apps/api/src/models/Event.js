@@ -14,6 +14,9 @@ const eventSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Performance compound index for instant ceremony listing and sorting
+eventSchema.index({ weddingId: 1, date: 1 });
+
 const MongooseEvent = mongoose.model('WeddingEvent', eventSchema);
 
 export const WeddingEvent = {

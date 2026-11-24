@@ -125,7 +125,7 @@ export function AdminDashboard() {
     loadAdminData();
   }, [activeWedding?._id]);
 
-  // Handle Event Creation
+  // Handle Event Creation with Instant Optimistic UI (0ms perceived wait)
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     if (!newEventName.trim() || !newEventDate) return;
@@ -149,31 +149,61 @@ export function AdminDashboard() {
       return;
     }
 
+    // 1. Instant Optimistic Card Creation
+    const tempId = `temp_event_${Date.now()}`;
+    const nameVal = newEventName.trim();
+    const descVal = newEventDesc.trim();
+    const dateVal = newEventDate;
+
+    const optimisticEvent = {
+      _id: tempId,
+      id: tempId,
+      name: nameVal,
+      description: descVal,
+      date: dateVal,
+      status: 'upcoming',
+      photoCount: 0,
+      isOptimistic: true,
+    };
+
+    setEvents((prev) => [...prev, optimisticEvent]);
+    setNewEventName('');
+    setNewEventDesc('');
+    setNewEventDate('');
+
+    // 2. Perform Network Call in the Background
     try {
       let res = await api.post(`/weddings/${weddingId}/events`, {
-        name: newEventName.trim(),
-        description: newEventDesc.trim(),
-        date: newEventDate,
+        name: nameVal,
+        description: descVal,
+        date: dateVal,
       }).catch(async (err) => {
         if (err.message && err.message.includes('Insufficient permissions')) {
           // Attempt immediate admin claim & retry once
           await api.post(`/weddings/${weddingId}/claim-admin`, {});
           return await api.post(`/weddings/${weddingId}/events`, {
-            name: newEventName.trim(),
-            description: newEventDesc.trim(),
-            date: newEventDate,
+            name: nameVal,
+            description: descVal,
+            date: dateVal,
           });
         }
         throw err;
       });
 
       if (res && res.success) {
-        setEvents((prev) => [...prev, res.data]);
-        setNewEventName('');
-        setNewEventDesc('');
-        setNewEventDate('');
+        // Replace optimistic event with confirmed server document
+        setEvents((prev) =>
+          prev.map((ev) => (ev._id === tempId ? { ...res.data, isOptimistic: false } : ev))
+        );
+      } else {
+        throw new Error(res?.error || 'Server did not return created event');
       }
     } catch (err) {
+      // Revert optimistic event and restore form on failure
+      setEvents((prev) => prev.filter((ev) => ev._id !== tempId));
+      setNewEventName(nameVal);
+      setNewEventDesc(descVal);
+      setNewEventDate(dateVal);
       alert('Failed to create event: ' + err.message);
     }
   };
@@ -506,10 +536,19 @@ export function AdminDashboard() {
               {events.map((evt) => (
                 <div
                   key={evt._id}
-                  className="bg-white p-4 rounded-2xl border border-gold/40 shadow-sm flex items-center justify-between"
+                  className={`bg-white p-4 rounded-2xl border border-gold/40 shadow-sm flex items-center justify-between transition-all ${
+                    evt.isOptimistic ? 'opacity-90 ring-1 ring-gold/40 animate-pulse' : ''
+                  }`}
                 >
                   <div>
-                    <h4 className="font-royal font-bold text-base text-burgundy">{evt.name}</h4>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="font-royal font-bold text-base text-burgundy">{evt.name}</h4>
+                      {evt.isOptimistic && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-gold/20 text-goldDark font-semibold">
+                          Saving...
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-gray-600 font-medium">
                       {new Date(evt.date).toLocaleDateString(undefined, {
                         month: 'short',

@@ -21,6 +21,10 @@ const qrCodeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// High-speed index for instant venue QR scanning
+qrCodeSchema.index({ token: 1, isActive: 1 });
+qrCodeSchema.index({ weddingId: 1, eventId: 1 });
+
 const MongooseQRCode = mongoose.model('QRCode', qrCodeSchema);
 
 // In-memory initialization if needed

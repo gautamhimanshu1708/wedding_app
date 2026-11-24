@@ -7,23 +7,27 @@ let isConnected = false;
 mongoose.set('bufferCommands', false);
 
 export async function connectDB() {
-  if (isConnected) {
+  if (isConnected && mongoose.connection.readyState === 1) {
     return true;
   }
 
   try {
     const connectPromise = mongoose.connect(ENV.MONGODB_URI, {
-      serverSelectionTimeoutMS: 2000,
-      connectTimeoutMS: 2000,
-      autoIndex: false,
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      maxIdleTimeMS: 30000,
+      serverSelectionTimeoutMS: 8000,
+      connectTimeoutMS: 8000,
+      socketTimeoutMS: 45000,
+      autoIndex: true,
     });
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Connection attempt timed out')), 2000)
+      setTimeout(() => reject(new Error('Connection attempt timed out after 8s')), 8000)
     );
 
     const conn = await Promise.race([connectPromise, timeoutPromise]);
     isConnected = true;
-    console.log(`[Database] MongoDB Connected: ${conn.connection.host}`);
+    console.log(`[Database] MongoDB Connected: ${conn.connection.host} (Pooled: min 2, max 10)`);
     return true;
   } catch (err) {
     isConnected = false;
