@@ -14,7 +14,7 @@ class SocketService {
 
     if (!token) return null;
 
-    const serverUrl = import.meta.env.VITE_API_URL || undefined;
+    const serverUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://royal-wedding-api-6uim.onrender.com' : undefined);
 
     this.socket = io(serverUrl, {
       auth: { token },

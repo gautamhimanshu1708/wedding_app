@@ -1,6 +1,8 @@
+const PROD_BACKEND_URL = 'https://royal-wedding-api-6uim.onrender.com';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/v1`
-  : '/api/v1';
+  : (import.meta.env.PROD ? `${PROD_BACKEND_URL}/api/v1` : '/api/v1');
 
 class ApiClient {
   constructor() {
