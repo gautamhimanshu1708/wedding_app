@@ -5,6 +5,7 @@ import { PhotoReport } from '../models/PhotoReport.js';
 import { WeddingEvent } from '../models/Event.js';
 import { StorageService } from '../services/storage.js';
 import { ImageProcessor } from '../services/imageProcessor.js';
+import { driveGetStream } from '../services/googleDriveStorage.js';
 import { broadcastToWedding } from '../sockets/socketHandler.js';
 import {
   PHOTO_PROCESSING_STATUS,
@@ -25,6 +26,13 @@ async function formatPhotoForClient(photo, currentUserId) {
     StorageService.getObjectUrl(photoObj.displayObjectKey),
   ]);
 
+  let fallbackUrl = null;
+  const isGdrive = (photoObj.displayObjectKey || '').startsWith('gdrive:');
+  if (isGdrive) {
+    const fileId = photoObj.displayObjectKey.replace('gdrive:', '');
+    fallbackUrl = `/api/v1/drive-view/${fileId}`;
+  }
+
   let isLikedByMe = false;
   if (currentUserId) {
     const likeExists = await Like.exists({
@@ -38,6 +46,7 @@ async function formatPhotoForClient(photo, currentUserId) {
     ...photoObj,
     thumbnailUrl,
     displayUrl,
+    fallbackUrl,
     isLikedByMe,
   };
 }
@@ -101,10 +110,17 @@ export async function getPhotos(req, res, next) {
           StorageService.getObjectUrl(photo.displayObjectKey),
         ]);
 
+        let fallbackUrl = null;
+        if ((photo.displayObjectKey || '').startsWith('gdrive:')) {
+          const fileId = photo.displayObjectKey.replace('gdrive:', '');
+          fallbackUrl = `/api/v1/drive-view/${fileId}`;
+        }
+
         return {
           ...photo,
           thumbnailUrl,
           displayUrl,
+          fallbackUrl,
           isLikedByMe: likedPhotoIdSet.has(photo._id.toString()),
         };
       })
@@ -164,26 +180,51 @@ export async function uploadDirect(req, res, next) {
         const cleanName = (file.originalname || 'photo.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
         const ceremonyName = targetEvent.name || 'Ceremonies';
 
-        // Unique keys for each asset so Google Drive never receives duplicate filenames
-        const originalKey = `weddings/${weddingId}/photos/${photoId}/Photo_${shortId}_${cleanName}`;
-        const displayKey = `weddings/${weddingId}/photos/${photoId}/Display_${shortId}.webp`;
-        const thumbKey = `weddings/${weddingId}/photos/${photoId}/Thumb_${shortId}.webp`;
+        const isDriveActive = Boolean(
+          req.wedding?.driveConfig?.isConnected && req.wedding.driveConfig.storageMode === 'google_drive'
+        );
 
-        // 2. Persist to Cloudflare R2 / Google Drive / Local Storage
-        const [savedOriginalKey, savedDisplayKey, savedThumbKey] = await Promise.all([
-          StorageService.putObject(originalKey, processed.originalBuffer, file.mimetype, req.wedding, ceremonyName),
-          StorageService.putObject(displayKey, processed.displayBuffer, 'image/webp', req.wedding, ceremonyName),
-          StorageService.putObject(thumbKey, processed.thumbnailBuffer, 'image/webp', req.wedding, ceremonyName),
-        ]);
+        let savedOriginalKey;
+        let savedDisplayKey;
+        let savedThumbKey;
+
+        if (isDriveActive) {
+          // Store 1 clean, high-resolution JPEG photo in Google Drive with native previews enabled
+          const cleanBase = cleanName.replace(/\.[^/.]+$/, '');
+          const driveFileName = `${ceremonyName}_${shortId}_${cleanBase}.jpg`;
+          const driveKey = `weddings/${weddingId}/photos/${photoId}/${driveFileName}`;
+          const gdriveKey = await StorageService.putObject(
+            driveKey,
+            processed.jpegBuffer || processed.originalBuffer,
+            'image/jpeg',
+            req.wedding,
+            ceremonyName
+          );
+
+          savedOriginalKey = gdriveKey;
+          savedDisplayKey = gdriveKey;
+          savedThumbKey = gdriveKey;
+        } else {
+          // Standard R2 / Local Storage
+          const originalKey = `weddings/${weddingId}/photos/${photoId}/Photo_${shortId}_${cleanName}`;
+          const displayKey = `weddings/${weddingId}/photos/${photoId}/Display_${shortId}.webp`;
+          const thumbKey = `weddings/${weddingId}/photos/${photoId}/Thumb_${shortId}.webp`;
+
+          [savedOriginalKey, savedDisplayKey, savedThumbKey] = await Promise.all([
+            StorageService.putObject(originalKey, processed.originalBuffer, file.mimetype, req.wedding, ceremonyName),
+            StorageService.putObject(displayKey, processed.displayBuffer, 'image/webp', req.wedding, ceremonyName),
+            StorageService.putObject(thumbKey, processed.thumbnailBuffer, 'image/webp', req.wedding, ceremonyName),
+          ]);
+        }
 
         // 3. Create Photo Record in MongoDB - Automatically Published!
         const photo = await Photo.create({
           weddingId,
           eventId: targetEvent._id,
           uploadedBy: req.user._id,
-          originalObjectKey: savedOriginalKey || originalKey,
-          displayObjectKey: savedDisplayKey || displayKey,
-          thumbnailObjectKey: savedThumbKey || thumbKey,
+          originalObjectKey: savedOriginalKey,
+          displayObjectKey: savedDisplayKey,
+          thumbnailObjectKey: savedThumbKey,
           mimeType: 'image/webp',
           sizeBytes: processed.displayBuffer.length,
           width: processed.width,
@@ -335,10 +376,17 @@ export async function getMyUploads(req, res, next) {
           StorageService.getObjectUrl(photo.displayObjectKey),
         ]);
 
+        let fallbackUrl = null;
+        if ((photo.displayObjectKey || '').startsWith('gdrive:')) {
+          const fileId = photo.displayObjectKey.replace('gdrive:', '');
+          fallbackUrl = `/api/v1/drive-view/${fileId}`;
+        }
+
         return {
           ...photo,
           thumbnailUrl,
           displayUrl,
+          fallbackUrl,
           isLikedByMe: false,
         };
       })
@@ -350,5 +398,33 @@ export async function getMyUploads(req, res, next) {
     });
   } catch (err) {
     next(err);
+  }
+}
+
+/**
+ * Direct streaming proxy for Google Drive photos.
+ * Provides a 100% reliable fail-safe stream for live gallery photos if Google CDN
+ * is hindered by third-party cookies or network restrictions.
+ */
+export async function streamDrivePhoto(req, res) {
+  const { fileId } = req.params;
+  if (!fileId) return res.status(400).send('File ID required');
+
+  try {
+    const fileInfo = await driveGetStream(fileId);
+    if (!fileInfo || !fileInfo.stream) {
+      // Fallback redirect directly to Google CDN
+      return res.redirect(`https://lh3.googleusercontent.com/d/${fileId}`);
+    }
+
+    res.setHeader('Content-Type', fileInfo.contentType || 'image/jpeg');
+    if (fileInfo.contentLength) {
+      res.setHeader('Content-Length', fileInfo.contentLength);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    fileInfo.stream.pipe(res);
+  } catch (err) {
+    console.warn('[Drive Stream] Fallback redirecting to CDN:', err.message);
+    res.redirect(`https://lh3.googleusercontent.com/d/${fileId}`);
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Heart, MoreHorizontal, Flag, Sparkles } from 'lucide-react';
 
 function formatTimestamp(dateString) {
@@ -26,7 +26,31 @@ export function PhotoCard({
   onView,
 }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imgSrc, setImgSrc] = useState(photo.displayUrl || photo.thumbnailUrl);
+  const [hasError, setHasError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(photo.displayUrl || photo.thumbnailUrl);
+    setImageLoaded(false);
+    setHasError(false);
+  }, [photo.displayUrl, photo.thumbnailUrl, photo.fallbackUrl]);
+
+  const handleImageError = () => {
+    // 1. Try streaming proxy fallback if available
+    if (photo.fallbackUrl && imgSrc !== photo.fallbackUrl) {
+      setImgSrc(photo.fallbackUrl);
+      return;
+    }
+    // 2. Try thumbnail if not yet tried
+    if (photo.thumbnailUrl && imgSrc !== photo.thumbnailUrl) {
+      setImgSrc(photo.thumbnailUrl);
+      return;
+    }
+    // 3. Prevent infinite skeleton shimmer
+    setImageLoaded(true);
+    setHasError(true);
+  };
 
   const uploaderName = photo.uploadedBy?.name || 'Wedding Guest';
   const uploaderAvatar =
@@ -92,20 +116,28 @@ export function PhotoCard({
         className="relative bg-ivory/60 cursor-pointer overflow-hidden aspect-[4/5] max-h-[500px]"
         onClick={() => onView(photo)}
       >
-        {!imageLoaded && (
+        {!imageLoaded && !hasError && (
           <div className="absolute inset-0 animate-shimmer flex items-center justify-center">
             <Sparkles className="w-6 h-6 text-gold/40 animate-pulse" />
           </div>
         )}
-        <img
-          src={photo.displayUrl || photo.thumbnailUrl}
-          alt={photo.caption || 'Wedding celebration'}
-          className={`w-full h-full object-cover transition-opacity duration-300 ${
-            imageLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
-          onLoad={() => setImageLoaded(true)}
-          loading="lazy"
-        />
+        {hasError ? (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-ivory/90 p-4 text-center">
+            <Sparkles className="w-8 h-8 text-gold/60 mb-2 animate-pulse" />
+            <span className="text-xs font-serif text-deepBrown/80">Photo loading moment...</span>
+          </div>
+        ) : (
+          <img
+            src={imgSrc}
+            alt={photo.caption || 'Wedding celebration'}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            onLoad={() => setImageLoaded(true)}
+            onError={handleImageError}
+            loading="lazy"
+          />
+        )}
       </div>
 
       {/* Bottom Footer: Like Button, Count & Caption */}

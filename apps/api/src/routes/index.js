@@ -7,6 +7,7 @@ import photoRoutes from './photoRoutes.js';
 import moderationRoutes from './moderationRoutes.js';
 import guestMessageRoutes from './guestMessageRoutes.js';
 import qrRoutes from './qrRoutes.js';
+import { streamDrivePhoto } from '../controllers/photoController.js';
 
 const apiRouter = Router();
 
@@ -19,5 +20,8 @@ apiRouter.use('/weddings', moderationRoutes);
 apiRouter.use('/weddings', guestMessageRoutes);
 apiRouter.use('/qr', qrRoutes);
 apiRouter.use('/invitations', invitationRoutes);
+
+// Direct streaming proxy for Google Drive photos (resilient fallback for hotlink blocks)
+apiRouter.get('/drive-view/:fileId', streamDrivePhoto);
 
 export default apiRouter;

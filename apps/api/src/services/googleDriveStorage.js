@@ -112,6 +112,9 @@ export async function getDriveClient(wedding = null) {
   }
 }
 
+// Global cache for folder creation to prevent concurrent race conditions
+const folderPromiseCache = new Map();
+
 /**
  * Upload a buffer to Google Drive
  */
@@ -123,25 +126,27 @@ export async function driveUpload(buffer, fileName, mimeType = 'image/jpeg', wed
 
   const { drive, rootFolderId } = clientInfo;
 
-  // If a ceremony name is provided and rootFolderId is valid, organize into ceremony subfolder
+  // 1. Resolve ceremony subfolder with race condition protection
   let targetFolderId = rootFolderId || 'root';
   if (ceremonyName && targetFolderId && targetFolderId !== 'root') {
     targetFolderId = await ensureSubfolder(drive, targetFolderId, ceremonyName);
   }
 
-  // Ensure clean, standard image MIME type so Google Drive generates full photo previews
-  let cleanMime = mimeType;
+  // 2. Always ensure a clean .jpg name and image/jpeg MIME type for Google Drive
+  // so Google Drive generates full visual thumbnails and image previews
+  let cleanName = fileName;
+  let cleanMime = 'image/jpeg';
   const lowerName = fileName.toLowerCase();
-  if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
-    cleanMime = 'image/jpeg';
-  } else if (lowerName.endsWith('.png')) {
+
+  if (lowerName.endsWith('.png')) {
     cleanMime = 'image/png';
-  } else if (lowerName.endsWith('.webp')) {
-    cleanMime = 'image/webp';
+  } else if (!lowerName.endsWith('.jpg') && !lowerName.endsWith('.jpeg')) {
+    cleanName = `${fileName.replace(/\.[^/.]+$/, '')}.jpg`;
+    cleanMime = 'image/jpeg';
   }
 
   const fileMetadata = {
-    name: fileName,
+    name: cleanName,
     parents: [targetFolderId],
   };
 
@@ -182,6 +187,30 @@ export async function driveGetUrl(fileId, wedding = null) {
 }
 
 /**
+ * Stream a Drive file directly through the API server as a resilient fail-safe
+ * when third-party cookies or networks block Google CDN hotlinks.
+ */
+export async function driveGetStream(fileId, wedding = null) {
+  const clientInfo = await getDriveClient(wedding);
+  if (!clientInfo || !clientInfo.drive || !fileId) return null;
+
+  try {
+    const res = await clientInfo.drive.files.get(
+      { fileId, alt: 'media', supportsAllDrives: true },
+      { responseType: 'stream' }
+    );
+    return {
+      stream: res.data,
+      contentType: res.headers['content-type'] || 'image/jpeg',
+      contentLength: res.headers['content-length'] || null,
+    };
+  } catch (err) {
+    console.error('[Drive Stream] Error fetching file stream:', err.message);
+    return null;
+  }
+}
+
+/**
  * Delete a file from Google Drive
  */
 export async function driveDelete(fileId, wedding = null) {
@@ -189,7 +218,7 @@ export async function driveDelete(fileId, wedding = null) {
   if (!clientInfo || !clientInfo.drive || !fileId) return;
 
   try {
-    await clientInfo.drive.files.delete({ fileId });
+    await clientInfo.drive.files.delete({ fileId, supportsAllDrives: true });
   } catch (err) {
     console.error('[Drive] delete error:', err.message);
   }
@@ -197,40 +226,51 @@ export async function driveDelete(fileId, wedding = null) {
 
 /**
  * Ensure a clean ceremony subfolder exists under root
+ * Uses memoized promise caching to prevent duplicate folders during concurrent photo uploads.
  */
 async function ensureSubfolder(drive, parentFolderId, subfolderName) {
   if (!subfolderName || !parentFolderId || parentFolderId === 'root') return parentFolderId;
   const cleanName = subfolderName.trim();
+  const cacheKey = `${parentFolderId}:::${cleanName.toLowerCase()}`;
 
-  try {
-    const query = `name='${cleanName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed=false`;
-    const existing = await drive.files.list({
-      q: query,
-      fields: 'files(id, name)',
-      spaces: 'drive',
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
-    });
-
-    if (existing.data.files?.length > 0) {
-      return existing.data.files[0].id;
-    }
-
-    const folder = await drive.files.create({
-      requestBody: {
-        name: cleanName,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents: [parentFolderId],
-      },
-      fields: 'id',
-      supportsAllDrives: true,
-    });
-
-    return folder.data.id;
-  } catch (e) {
-    console.warn('[Storage] Notice creating subfolder, using parent:', e.message);
-    return parentFolderId;
+  if (folderPromiseCache.has(cacheKey)) {
+    return await folderPromiseCache.get(cacheKey);
   }
+
+  const creationPromise = (async () => {
+    try {
+      const query = `name='${cleanName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed=false`;
+      const existing = await drive.files.list({
+        q: query,
+        fields: 'files(id, name)',
+        spaces: 'drive',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+      });
+
+      if (existing.data.files?.length > 0) {
+        return existing.data.files[0].id;
+      }
+
+      const folder = await drive.files.create({
+        requestBody: {
+          name: cleanName,
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [parentFolderId],
+        },
+        fields: 'id',
+        supportsAllDrives: true,
+      });
+
+      return folder.data.id;
+    } catch (e) {
+      console.warn('[Storage] Notice creating subfolder, using parent:', e.message);
+      return parentFolderId;
+    }
+  })();
+
+  folderPromiseCache.set(cacheKey, creationPromise);
+  return await creationPromise;
 }
 
 const initPromise = Promise.resolve(true);

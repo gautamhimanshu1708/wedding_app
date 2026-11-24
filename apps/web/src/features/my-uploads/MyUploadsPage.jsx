@@ -80,6 +80,11 @@ export function MyUploadsPage() {
                 <img
                   src={photo.thumbnailUrl || photo.displayUrl}
                   alt={photo.caption || 'Upload'}
+                  onError={(e) => {
+                    if (photo.fallbackUrl && !e.target.src.includes('drive-view')) {
+                      e.target.src = photo.fallbackUrl;
+                    }
+                  }}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   loading="lazy"
                 />

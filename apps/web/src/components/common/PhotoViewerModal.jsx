@@ -1,7 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Heart, Calendar } from 'lucide-react';
 
 export function PhotoViewerModal({ photo, onClose, onLike }) {
+  const [imgSrc, setImgSrc] = useState(photo?.displayUrl || photo?.thumbnailUrl);
+
+  useEffect(() => {
+    setImgSrc(photo?.displayUrl || photo?.thumbnailUrl);
+  }, [photo?.displayUrl, photo?.thumbnailUrl, photo?.fallbackUrl]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
@@ -11,6 +17,14 @@ export function PhotoViewerModal({ photo, onClose, onLike }) {
   }, [onClose]);
 
   if (!photo) return null;
+
+  const handleImageError = () => {
+    if (photo.fallbackUrl && imgSrc !== photo.fallbackUrl) {
+      setImgSrc(photo.fallbackUrl);
+    } else if (photo.thumbnailUrl && imgSrc !== photo.thumbnailUrl) {
+      setImgSrc(photo.thumbnailUrl);
+    }
+  };
 
   const uploaderName = photo.uploadedBy?.name || 'Wedding Guest';
 
@@ -46,8 +60,9 @@ export function PhotoViewerModal({ photo, onClose, onLike }) {
       {/* Center Image Container */}
       <div className="flex-1 flex items-center justify-center p-2 relative overflow-hidden">
         <img
-          src={photo.displayUrl || photo.thumbnailUrl}
+          src={imgSrc}
           alt={photo.caption || 'Wedding moment'}
+          onError={handleImageError}
           className="max-h-[82vh] max-w-full object-contain rounded-lg shadow-2xl select-none"
         />
       </div>

@@ -77,8 +77,15 @@ export class ImageProcessor {
       .webp({ quality: 80, effort: 3 })
       .toBuffer();
 
+    // 5. Generate high-quality auto-rotated JPEG for Google Drive native previews
+    const jpegBuffer = await sharp(inputBuffer, { failOnError: false })
+      .rotate()
+      .jpeg({ quality: 90, mozjpeg: true })
+      .toBuffer();
+
     return {
       originalBuffer: inputBuffer,
+      jpegBuffer,
       displayBuffer,
       thumbnailBuffer,
       width: displayMeta.width || metadata.width,
