@@ -25,6 +25,7 @@ import {
   LogOut,
   Lock,
   KeyRound,
+  Unlink,
 } from 'lucide-react';
 import { GoldDivider } from '../../components/common/OrnamentalBorder.jsx';
 
@@ -332,7 +333,63 @@ export function AdminDashboard() {
     }
   };
 
-  // Handle Photo Moderation (Hide or Restore)
+  // Handle Disconnect Google Drive
+  const handleDisconnectGoogleDrive = async () => {
+    if (
+      !window.confirm(
+        'Are you sure you want to disconnect Google Drive? Photos will revert to saving on server storage, and you can connect another Drive folder anytime.'
+      )
+    ) {
+      return;
+    }
+
+    const weddingId = activeWedding?._id || activeWedding?.id;
+    try {
+      let disconnected = false;
+      try {
+        const res = await api.post(`/weddings/${weddingId}/storage/disconnect`, {});
+        if (res.success) disconnected = true;
+      } catch (err) {
+        // Resilient fallback update if Render deployment is delayed
+        const fallbackRes = await api.put(`/weddings/${weddingId}`, {
+          driveConfig: {
+            isConnected: false,
+            storageMode: 'local',
+            folderId: '',
+            clientEmail: '',
+            privateKey: '',
+          },
+        });
+        if (fallbackRes.success) disconnected = true;
+      }
+
+      if (disconnected) {
+        setDriveConnected(false);
+        setStorageMode('local');
+        setDriveFolderId('');
+        setDriveClientEmail('');
+        setDrivePrivateKey('');
+        setDriveJsonInput('');
+        setDriveSuccessMsg('Google Drive disconnected successfully. Switched to Local Storage.');
+        if (activeWedding) {
+          setActiveWedding({
+            ...activeWedding,
+            driveConfig: {
+              ...(activeWedding.driveConfig || {}),
+              isConnected: false,
+              storageMode: 'local',
+              folderId: '',
+              clientEmail: '',
+              privateKey: '',
+            },
+          });
+        }
+        setTimeout(() => setDriveSuccessMsg(null), 5000);
+      }
+    } catch (err) {
+      alert('Failed to disconnect Google Drive: ' + err.message);
+    }
+  };
   const handleUpdatePhotoStatus = async (photoId, newStatus) => {
     const weddingId = activeWedding?._id || activeWedding?.id;
     if (!weddingId) return;
@@ -1038,15 +1095,28 @@ export function AdminDashboard() {
                     <Cloud className="w-4 h-4 text-blue-600" />
                     <span className="text-xs font-bold text-deepBrown">Google Drive Credentials</span>
                   </div>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                      driveConnected
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    {driveConnected ? '✓ Connected' : 'Not Configured'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        driveConnected
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {driveConnected ? '✓ Connected' : 'Not Configured'}
+                    </span>
+                    {driveConnected && (
+                      <button
+                        type="button"
+                        onClick={handleDisconnectGoogleDrive}
+                        className="text-[10px] text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded-full font-bold transition flex items-center gap-1 shadow-sm active:scale-95"
+                        title="Disconnect current Drive to connect a new one"
+                      >
+                        <Unlink className="w-3 h-3" />
+                        <span>Disconnect</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {driveSuccessMsg && (

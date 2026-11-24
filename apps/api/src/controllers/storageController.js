@@ -140,3 +140,35 @@ export async function toggleStorageMode(req, res, next) {
     next(err);
   }
 }
+
+/**
+ * POST /weddings/:weddingId/storage/disconnect
+ * Disconnect Google Drive credentials and revert to local storage
+ */
+export async function disconnectGoogleDrive(req, res, next) {
+  try {
+    const wedding = req.wedding;
+    wedding.driveConfig = {
+      folderId: '',
+      clientEmail: '',
+      privateKey: '',
+      isConnected: false,
+      storageMode: 'local',
+      connectedAt: null,
+    };
+    await wedding.save();
+
+    res.json({
+      success: true,
+      message: 'Google Drive disconnected successfully. Switched to Local Storage.',
+      data: {
+        storageMode: 'local',
+        isConnected: false,
+        folderId: '',
+        clientEmail: '',
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}

@@ -160,15 +160,20 @@ export async function uploadDirect(req, res, next) {
         const processed = await ImageProcessor.processPhoto(file.buffer);
 
         const photoId = uuidv4();
-        const originalKey = `weddings/${weddingId}/photos/${photoId}/original_${file.originalname}`;
-        const displayKey = `weddings/${weddingId}/photos/${photoId}/display.webp`;
-        const thumbKey = `weddings/${weddingId}/photos/${photoId}/thumb.webp`;
+        const shortId = photoId.slice(0, 8);
+        const cleanName = (file.originalname || 'photo.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+        const ceremonyName = targetEvent.name || 'Ceremonies';
+
+        // Unique keys for each asset so Google Drive never receives duplicate filenames
+        const originalKey = `weddings/${weddingId}/photos/${photoId}/Photo_${shortId}_${cleanName}`;
+        const displayKey = `weddings/${weddingId}/photos/${photoId}/Display_${shortId}.webp`;
+        const thumbKey = `weddings/${weddingId}/photos/${photoId}/Thumb_${shortId}.webp`;
 
         // 2. Persist to Cloudflare R2 / Google Drive / Local Storage
         await Promise.all([
-          StorageService.putObject(originalKey, processed.originalBuffer, file.mimetype, req.wedding),
-          StorageService.putObject(displayKey, processed.displayBuffer, 'image/webp', req.wedding),
-          StorageService.putObject(thumbKey, processed.thumbnailBuffer, 'image/webp', req.wedding),
+          StorageService.putObject(originalKey, processed.originalBuffer, file.mimetype, req.wedding, ceremonyName),
+          StorageService.putObject(displayKey, processed.displayBuffer, 'image/webp', req.wedding, ceremonyName),
+          StorageService.putObject(thumbKey, processed.thumbnailBuffer, 'image/webp', req.wedding, ceremonyName),
         ]);
 
         // 3. Create Photo Record in MongoDB - Automatically Published!

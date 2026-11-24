@@ -58,7 +58,7 @@ export class StorageService {
    * For Google Drive, key format: "<weddingId>/<type>/<filename>"
    * Returns the storage key (or Drive fileId for Drive backend).
    */
-  static async putObject(key, buffer, contentType = 'image/webp', wedding = null) {
+  static async putObject(key, buffer, contentType = 'image/webp', wedding = null, ceremonyName = null) {
     if (isR2Configured && s3Client) {
       const command = new PutObjectCommand({
         Bucket: ENV.R2_BUCKET_NAME,
@@ -76,7 +76,7 @@ export class StorageService {
       try {
         const parts = key.split('/');
         const fileName = parts[parts.length - 1];
-        const fileData = await driveUpload(buffer, fileName, contentType, wedding);
+        const fileData = await driveUpload(buffer, fileName, contentType, wedding, ceremonyName);
         return `gdrive:${fileData.id}`;
       } catch (driveErr) {
         console.warn('[Storage] Google Drive upload failed, falling back to local storage:', driveErr.message);

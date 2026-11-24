@@ -14,6 +14,7 @@ import {
   getStorageSettings,
   setupGoogleDrive,
   toggleStorageMode,
+  disconnectGoogleDrive,
 } from '../controllers/storageController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireWeddingMember, requireAdmin } from '../middleware/membership.js';
@@ -45,5 +46,6 @@ router.put('/:weddingId/admin-pin', requireAdmin, updateAdminPin);
 router.get('/:weddingId/storage', requireAdmin, getStorageSettings);
 router.post('/:weddingId/storage/google-drive', requireAdmin, setupGoogleDrive);
 router.post('/:weddingId/storage/toggle-mode', requireAdmin, toggleStorageMode);
+router.post('/:weddingId/storage/disconnect', requireAdmin, disconnectGoogleDrive);
 
 export default router;

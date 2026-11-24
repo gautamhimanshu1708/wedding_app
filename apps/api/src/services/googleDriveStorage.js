@@ -115,30 +115,45 @@ export async function getDriveClient(wedding = null) {
 /**
  * Upload a buffer to Google Drive
  */
-export async function driveUpload(buffer, fileName, mimeType = 'image/webp', wedding = null) {
+export async function driveUpload(buffer, fileName, mimeType = 'image/jpeg', wedding = null, ceremonyName = null) {
   const clientInfo = await getDriveClient(wedding);
   if (!clientInfo || !clientInfo.drive) {
     throw new Error('Google Drive is not configured or accessible.');
   }
 
   const { drive, rootFolderId } = clientInfo;
-  const weddingId = wedding?._id || wedding?.id;
-  const folderId = await ensureWeddingFolder(drive, rootFolderId, weddingId);
+
+  // If a ceremony name is provided and rootFolderId is valid, organize into ceremony subfolder
+  let targetFolderId = rootFolderId || 'root';
+  if (ceremonyName && targetFolderId && targetFolderId !== 'root') {
+    targetFolderId = await ensureSubfolder(drive, targetFolderId, ceremonyName);
+  }
+
+  // Ensure clean, standard image MIME type so Google Drive generates full photo previews
+  let cleanMime = mimeType;
+  const lowerName = fileName.toLowerCase();
+  if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+    cleanMime = 'image/jpeg';
+  } else if (lowerName.endsWith('.png')) {
+    cleanMime = 'image/png';
+  } else if (lowerName.endsWith('.webp')) {
+    cleanMime = 'image/webp';
+  }
 
   const fileMetadata = {
     name: fileName,
-    parents: [folderId],
+    parents: [targetFolderId],
   };
 
   const media = {
-    mimeType,
+    mimeType: cleanMime,
     body: Readable.from(buffer),
   };
 
   const response = await drive.files.create({
     requestBody: fileMetadata,
     media,
-    fields: 'id, webViewLink, webContentLink',
+    fields: 'id, name, webViewLink, webContentLink',
   });
 
   return response.data;
@@ -177,14 +192,14 @@ export async function driveDelete(fileId, wedding = null) {
 }
 
 /**
- * Ensure a subfolder exists under root
+ * Ensure a clean ceremony subfolder exists under root
  */
-async function ensureWeddingFolder(drive, rootFolderId, weddingId) {
-  if (!weddingId) return rootFolderId;
-  const folderName = `Wedding_${weddingId}`;
+async function ensureSubfolder(drive, parentFolderId, subfolderName) {
+  if (!subfolderName || !parentFolderId || parentFolderId === 'root') return parentFolderId;
+  const cleanName = subfolderName.trim();
 
   try {
-    const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${rootFolderId}' in parents and trashed=false`;
+    const query = `name='${cleanName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed=false`;
     const existing = await drive.files.list({ q: query, fields: 'files(id, name)', spaces: 'drive' });
 
     if (existing.data.files?.length > 0) {
@@ -193,16 +208,17 @@ async function ensureWeddingFolder(drive, rootFolderId, weddingId) {
 
     const folder = await drive.files.create({
       requestBody: {
-        name: folderName,
+        name: cleanName,
         mimeType: 'application/vnd.google-apps.folder',
-        parents: [rootFolderId],
+        parents: [parentFolderId],
       },
       fields: 'id',
     });
 
     return folder.data.id;
   } catch (e) {
-    return rootFolderId;
+    console.warn('[Storage] Notice creating subfolder, using parent:', e.message);
+    return parentFolderId;
   }
 }
 
