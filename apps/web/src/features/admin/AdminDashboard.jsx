@@ -73,10 +73,9 @@ export function AdminDashboard() {
   const [driveErrorMsg, setDriveErrorMsg] = useState(null);
 
   
-  // Automatically ensure activeWedding is loaded if null
+  // Automatically ensure activeWedding is loaded or re-fetched from database
   useEffect(() => {
     async function ensureWedding() {
-      if (activeWedding?._id) return;
       try {
         const res = await api.get('/weddings/slug/royal-udaipur-2026');
         if (res.success && res.data) {
@@ -86,19 +85,21 @@ export function AdminDashboard() {
       } catch (err) {
         console.warn('Could not load default wedding:', err);
       }
-      // Resilient fallback so the admin portal is always functional
-      const fallback = {
-        _id: 'royal-udaipur-2026',
-        id: 'royal-udaipur-2026',
-        title: "Aarav & Diya's Royal Wedding",
-        slug: 'royal-udaipur-2026',
-        coupleNames: { partner1: 'Aarav Sharma', partner2: 'Diya Verma' },
-        venue: 'City Palace, Lake Pichola, Udaipur',
-      };
-      setActiveWedding(fallback);
+      if (!activeWedding) {
+        // Resilient fallback only if no active wedding exists at all
+        const fallback = {
+          _id: 'royal-udaipur-2026',
+          id: 'royal-udaipur-2026',
+          title: "Aarav & Diya's Royal Wedding",
+          slug: 'royal-udaipur-2026',
+          coupleNames: { partner1: 'Aarav Sharma', partner2: 'Diya Verma' },
+          venue: 'City Palace, Lake Pichola, Udaipur',
+        };
+        setActiveWedding(fallback);
+      }
     }
     ensureWedding();
-  }, [activeWedding?._id, setActiveWedding]);
+  }, [setActiveWedding]);
 
   useEffect(() => {
     async function loadAdminData() {
@@ -319,17 +320,16 @@ export function AdminDashboard() {
 
   // Handle QR & Access Settings Save
   const handleSaveQRSettings = async () => {
-    const weddingId = activeWedding?._id || activeWedding?.id;
-    if (!weddingId) {
-      alert('Wedding details are loading. Please try again.');
-      return;
-    }
+    const weddingId = activeWedding?._id || activeWedding?.id || 'royal-udaipur-2026';
     try {
       const res = await api.put(`/weddings/${weddingId}`, {
         settings: { allowPublicQR, allowGuestUploads },
       });
       if (res.success) {
         setQrSettingsSaved(true);
+        if (res.data) {
+          setActiveWedding(res.data);
+        }
         setTimeout(() => setQrSettingsSaved(false), 3000);
       }
     } catch (err) {
@@ -340,11 +340,7 @@ export function AdminDashboard() {
   // Handle Wedding Settings Save
   const handleSaveSettings = async (e) => {
     e.preventDefault();
-    const weddingId = activeWedding?._id || activeWedding?.id;
-    if (!weddingId) {
-      alert('Wedding details are loading. Please try again.');
-      return;
-    }
+    const weddingId = activeWedding?._id || activeWedding?.id || 'royal-udaipur-2026';
     try {
       const res = await api.put(`/weddings/${weddingId}`, {
         title: weddingTitle,
@@ -353,6 +349,10 @@ export function AdminDashboard() {
       });
       if (res.success) {
         setSettingsSaved(true);
+        if (res.data) {
+          setActiveWedding(res.data);
+          localStorage.setItem('royal_active_wedding_id', res.data._id || weddingId);
+        }
         setTimeout(() => setSettingsSaved(false), 3000);
       }
     } catch (err) {

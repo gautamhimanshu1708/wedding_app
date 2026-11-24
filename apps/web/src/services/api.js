@@ -49,13 +49,18 @@ class ApiClient {
     };
 
     let cleanEndpoint = endpoint;
-    if (cleanEndpoint.startsWith('/api/v1')) {
-      cleanEndpoint = cleanEndpoint.replace(/^\/api\/v1/, '');
+    let url;
+    if (endpoint.startsWith('http')) {
+      url = endpoint;
+    } else {
+      if (cleanEndpoint.startsWith('/api/v1')) {
+        cleanEndpoint = cleanEndpoint.replace(/^\/api\/v1/, '');
+      }
+      if (!cleanEndpoint.startsWith('/')) {
+        cleanEndpoint = `/${cleanEndpoint}`;
+      }
+      url = `${API_BASE_URL}${cleanEndpoint}`;
     }
-
-    const url = endpoint.startsWith('http')
-      ? endpoint
-      : `${API_BASE_URL}${cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`}`;
     const response = await fetch(url, config);
 
     const data = await response.json().catch(() => null);
@@ -72,14 +77,30 @@ class ApiClient {
   }
 
   get(endpoint, params = {}) {
-    const cleanEndpoint = endpoint.startsWith(API_BASE_URL) ? endpoint.slice(API_BASE_URL.length) : endpoint;
-    const url = new URL(cleanEndpoint.startsWith('http') ? cleanEndpoint : `${window.location.origin}${API_BASE_URL}${cleanEndpoint}`);
+    let cleanEndpoint = endpoint;
+    if (cleanEndpoint.startsWith(API_BASE_URL)) {
+      cleanEndpoint = cleanEndpoint.slice(API_BASE_URL.length);
+    }
+    if (cleanEndpoint.startsWith('/api/v1')) {
+      cleanEndpoint = cleanEndpoint.slice('/api/v1'.length);
+    }
+    if (!cleanEndpoint.startsWith('/') && !cleanEndpoint.startsWith('http')) {
+      cleanEndpoint = `/${cleanEndpoint}`;
+    }
+
+    const fullUrl = cleanEndpoint.startsWith('http')
+      ? new URL(cleanEndpoint)
+      : API_BASE_URL.startsWith('http')
+        ? new URL(`${API_BASE_URL}${cleanEndpoint}`)
+        : new URL(`${window.location.origin}${API_BASE_URL}${cleanEndpoint}`);
+
     Object.keys(params).forEach((key) => {
       if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
-        url.searchParams.append(key, params[key]);
+        fullUrl.searchParams.append(key, params[key]);
       }
     });
-    return this.request(url.pathname + url.search, { method: 'GET' });
+
+    return this.request(fullUrl.toString(), { method: 'GET' });
   }
 
   post(endpoint, body = {}) {

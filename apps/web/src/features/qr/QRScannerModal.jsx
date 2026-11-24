@@ -83,29 +83,55 @@ export function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
     setErrorMsg(null);
 
     try {
-      let token = null;
+      const cleanText = rawText ? rawText.trim() : '';
 
-      // Check if rawText is a full URL with ?qr= or /verify/
-      if (rawText.includes('qr=')) {
-        const url = new URL(rawText.startsWith('http') ? rawText : `https://${rawText}`);
-        token = url.searchParams.get('qr');
-      } else if (rawText.includes('/verify/')) {
-        const parts = rawText.split('/verify/');
+      // 1. Check if rawText contains a direct QR token
+      let token = null;
+      if (cleanText.includes('qr=')) {
+        try {
+          const url = new URL(cleanText.startsWith('http') ? cleanText : `https://${cleanText}`);
+          token = url.searchParams.get('qr');
+        } catch (e) {
+          const match = cleanText.match(/qr=([^&]+)/);
+          if (match) token = match[1];
+        }
+      } else if (cleanText.includes('/verify/')) {
+        const parts = cleanText.split('/verify/');
         token = parts[1]?.split('?')[0];
-      } else if (rawText.includes('/events/')) {
-        // URL like /w/slug/events/:eventId?qr=xxx
-        const url = new URL(rawText.startsWith('http') ? rawText : `https://${rawText}`);
-        token = url.searchParams.get('qr');
-      } else {
-        token = rawText.trim();
       }
 
+      // 2. If it's a general wedding space URL without a ceremony token
+      if (!token && (cleanText.includes('/w/') || cleanText.startsWith('http'))) {
+        const match = cleanText.match(/\/w\/([a-zA-Z0-9_-]+)/);
+        if (match) {
+          const slug = match[1];
+          const wedRes = await api.get(`/weddings/slug/${slug}`);
+          if (wedRes.success && wedRes.data) {
+            setSuccessData({ wedding: wedRes.data });
+            await stopScanner();
+            setTimeout(() => {
+              if (onScanSuccess) {
+                onScanSuccess({ wedding: wedRes.data });
+              }
+              onClose();
+            }, 1000);
+            return;
+          }
+        }
+        throw new Error('This QR code is not linked to an active ceremony.');
+      }
+
+      // 3. Fallback: bare token string
       if (!token) {
-        throw new Error('Unrecognized QR format.');
+        token = cleanText;
+      }
+
+      if (!token || token.startsWith('http')) {
+        throw new Error('Unrecognized or invalid QR code format.');
       }
 
       // Verify token with backend
-      const res = await api.get(`/qr/verify/${token}`);
+      const res = await api.get(`/qr/verify/${encodeURIComponent(token)}`);
 
       if (res.success && res.data) {
         setSuccessData(res.data);
