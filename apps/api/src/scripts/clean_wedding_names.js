@@ -19,14 +19,15 @@ async function run() {
     { slug: 'royal-udaipur-2026' },
     {
       $set: {
-        title: 'Royal Wedding Celebration',
+        title: 'ShadiVibes Wedding Celebration',
         coupleNames: { partner1: '', partner2: '' },
+        weddingDate: new Date(),
         venue: 'City Palace, Lake Pichola, Udaipur',
         adminPin: '1211',
       },
     }
   );
-  console.log('Updated wedding document:', res.modifiedCount);
+  console.log('Updated wedding document with ShadiVibes and current date:', res.modifiedCount);
   await mongoose.disconnect();
   process.exit(0);
 }

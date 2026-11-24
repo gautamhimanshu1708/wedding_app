@@ -201,11 +201,22 @@ export async function getWeddingById(req, res, next) {
 export async function updateWedding(req, res, next) {
   try {
     const wedding = req.wedding;
-    const { title, venue, welcomeMessage, settings } = req.body;
+    const { title, venue, welcomeMessage, settings, coupleNames, weddingDate } = req.body;
 
     if (title !== undefined) wedding.title = title;
     if (venue !== undefined) wedding.venue = venue;
     if (welcomeMessage !== undefined) wedding.welcomeMessage = welcomeMessage;
+
+    if (coupleNames && typeof coupleNames === 'object') {
+      wedding.coupleNames = {
+        partner1: coupleNames.partner1 !== undefined ? coupleNames.partner1.trim() : (wedding.coupleNames?.partner1 || ''),
+        partner2: coupleNames.partner2 !== undefined ? coupleNames.partner2.trim() : (wedding.coupleNames?.partner2 || ''),
+      };
+    }
+
+    if (weddingDate) {
+      wedding.weddingDate = new Date(weddingDate);
+    }
 
     // Merge settings safely — owner can toggle QR, uploads, etc.
     if (settings && typeof settings === 'object') {

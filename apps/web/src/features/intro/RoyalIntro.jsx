@@ -150,24 +150,30 @@ export function RoyalIntro() {
     );
   }
 
-  // Display couple names only if actually customized by user, else graceful royal title
+  // Display couple names only if actually customized by user, else graceful ShadiVibes title
   const p1 = wedding.coupleNames?.partner1?.trim();
   const p2 = wedding.coupleNames?.partner2?.trim();
-  const hasCustomCouple = p1 && p2 && p1 !== 'Partner 1' && p1 !== 'Aarav Sharma';
+  const hasCustomCouple = Boolean(p1 && p2 && p1 !== 'Partner 1' && p1 !== 'Aarav Sharma');
   const displayTitle = hasCustomCouple
     ? `${p1} & ${p2}`
     : wedding.title && wedding.title !== "Aarav & Diya's Royal Wedding"
     ? wedding.title
-    : 'The Royal Wedding';
+    : 'ShadiVibes Celebration';
 
-  const formattedDate = wedding.weddingDate
+  // If couple has not customized their date yet, dynamically display today's current date
+  const formattedDate = (hasCustomCouple && wedding.weddingDate)
     ? new Date(wedding.weddingDate).toLocaleDateString(undefined, {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
       })
-    : 'Auspicious Celebrations';
+    : new Date().toLocaleDateString(undefined, {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
 
   return (
     <div
@@ -214,7 +220,7 @@ export function RoyalIntro() {
       <div className="flex items-center justify-between z-10 safe-top">
         <div className="flex items-center gap-1.5 text-gold text-xs tracking-widest uppercase font-semibold">
           <Sparkles className="w-4 h-4 text-gold animate-spin-slow" />
-          <span>Royal Wedding</span>
+          <span>ShadiVibes</span>
         </div>
 
         {isAuthenticated ? (
@@ -346,7 +352,7 @@ export function RoyalIntro() {
       </div>
 
       <footer className="text-center text-[11px] text-[#E8D8BD]/70 font-medium z-10 safe-pb">
-        <p>Royal Wedding Photo Sharing Platform • Fast &amp; Private</p>
+        <p>ShadiVibes • Live &amp; Private Wedding Moments</p>
       </footer>
 
       {/* QR Scanner Camera Modal */}

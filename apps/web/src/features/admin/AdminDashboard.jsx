@@ -81,6 +81,11 @@ export function AdminDashboard() {
 
   // Settings Form State
   const [weddingTitle, setWeddingTitle] = useState(activeWedding?.title || '');
+  const [partner1, setPartner1] = useState(activeWedding?.coupleNames?.partner1 || '');
+  const [partner2, setPartner2] = useState(activeWedding?.coupleNames?.partner2 || '');
+  const [weddingDate, setWeddingDate] = useState(
+    activeWedding?.weddingDate ? new Date(activeWedding.weddingDate).toISOString().split('T')[0] : ''
+  );
   const [venue, setVenue] = useState(activeWedding?.venue || '');
   const [welcomeMessage, setWelcomeMessage] = useState(activeWedding?.welcomeMessage || '');
   const [settingsSaved, setSettingsSaved] = useState(false);
@@ -350,6 +355,15 @@ export function AdminDashboard() {
       if (activeWedding.title) setWeddingTitle(activeWedding.title);
       if (activeWedding.venue) setVenue(activeWedding.venue);
       if (activeWedding.welcomeMessage) setWelcomeMessage(activeWedding.welcomeMessage);
+      if (activeWedding.coupleNames) {
+        if (activeWedding.coupleNames.partner1) setPartner1(activeWedding.coupleNames.partner1);
+        if (activeWedding.coupleNames.partner2) setPartner2(activeWedding.coupleNames.partner2);
+      }
+      if (activeWedding.weddingDate) {
+        try {
+          setWeddingDate(new Date(activeWedding.weddingDate).toISOString().split('T')[0]);
+        } catch (e) {}
+      }
       if (activeWedding.settings) {
         setAllowPublicQR(activeWedding.settings.allowPublicQR !== false);
         setAllowGuestUploads(activeWedding.settings.allowGuestUploads !== false);
@@ -383,6 +397,8 @@ export function AdminDashboard() {
     try {
       const res = await api.put(`/weddings/${weddingId}`, {
         title: weddingTitle,
+        coupleNames: { partner1, partner2 },
+        weddingDate: weddingDate ? new Date(weddingDate).toISOString() : new Date().toISOString(),
         venue,
         welcomeMessage,
       });
@@ -829,19 +845,78 @@ export function AdminDashboard() {
                 </div>
               )}
               <form onSubmit={handleSaveSettings} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-deepBrown mb-1">Partner 1 Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Vikram"
+                      value={partner1}
+                      onChange={(e) => setPartner1(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-deepBrown mb-1">Partner 2 Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Ananya"
+                      value={partner2}
+                      onChange={(e) => setPartner2(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-deepBrown mb-1">Wedding Title</label>
-                  <input type="text" value={weddingTitle} onChange={(e) => setWeddingTitle(e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium" required />
+                  <input
+                    type="text"
+                    placeholder="e.g. Vikram & Ananya's Royal Wedding"
+                    value={weddingTitle}
+                    onChange={(e) => setWeddingTitle(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium"
+                    required
+                  />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-deepBrown mb-1">Wedding Date</label>
+                  <input
+                    type="date"
+                    value={weddingDate}
+                    onChange={(e) => setWeddingDate(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-deepBrown mb-1">Venue &amp; City</label>
-                  <input type="text" value={venue} onChange={(e) => setVenue(e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium" required />
+                  <input
+                    type="text"
+                    placeholder="e.g. City Palace, Lake Pichola, Udaipur"
+                    value={venue}
+                    onChange={(e) => setVenue(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium"
+                    required
+                  />
                 </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-deepBrown mb-1">Welcome Message for Guests</label>
-                  <textarea rows={3} value={welcomeMessage} onChange={(e) => setWelcomeMessage(e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium resize-none" />
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Welcome to our royal wedding celebrations! Please share your memories."
+                    value={welcomeMessage}
+                    onChange={(e) => setWelcomeMessage(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium resize-none"
+                  />
                 </div>
-                <button type="submit" className="w-full py-2.5 bg-burgundy hover:bg-burgundyLight text-goldLight font-bold text-xs rounded-xl shadow-royal flex items-center justify-center gap-1.5 transition">
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-burgundy hover:bg-burgundyLight text-goldLight font-bold text-xs rounded-xl shadow-royal flex items-center justify-center gap-1.5 transition"
+                >
                   <Save className="w-4 h-4" />
                   <span>Save Wedding Settings</span>
                 </button>

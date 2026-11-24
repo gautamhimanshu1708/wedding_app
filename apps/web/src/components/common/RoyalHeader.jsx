@@ -9,9 +9,9 @@ export function RoyalHeader({ onOpenQR }) {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const coupleNames = activeWedding?.coupleNames
+  const coupleNames = (activeWedding?.coupleNames?.partner1 && activeWedding?.coupleNames?.partner2)
     ? `${activeWedding.coupleNames.partner1} & ${activeWedding.coupleNames.partner2}`
-    : activeWedding?.title || 'Royal Wedding';
+    : activeWedding?.title || 'ShadiVibes';
 
   const userRole = activeWedding?.userRole || 'guest';
   const isAdmin = isAdminOrAbove(userRole);

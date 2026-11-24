@@ -57,7 +57,7 @@ export function AuthPage() {
             color: '#E2CA92',
           }}
         >
-          {mode === 'admin' ? 'Couple & Admin Portal' : 'Royal Wedding Access'}
+          {mode === 'admin' ? 'Couple & Admin Portal' : 'ShadiVibes Guest Login'}
         </h1>
         <p className="text-xs text-[#E8D8BD] mt-1 max-w-xs mx-auto">
           {mode === 'admin'
@@ -216,7 +216,7 @@ export function AuthPage() {
       </div>
 
       <p className="mt-4 text-[10px] text-champagne/50 tracking-wide text-center">
-        Royal Wedding Photo Sharing Platform • Private, Secure &amp; Instant
+        ShadiVibes • Private, Secure &amp; Instant Photo Sharing
       </p>
     </div>
   );
