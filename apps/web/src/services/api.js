@@ -46,11 +46,14 @@ class ApiClient {
       headers,
     };
 
+    let cleanEndpoint = endpoint;
+    if (cleanEndpoint.startsWith('/api/v1')) {
+      cleanEndpoint = cleanEndpoint.replace(/^\/api\/v1/, '');
+    }
+
     const url = endpoint.startsWith('http')
       ? endpoint
-      : endpoint.startsWith(API_BASE_URL)
-        ? endpoint
-        : `${API_BASE_URL}${endpoint}`;
+      : `${API_BASE_URL}${cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`}`;
     const response = await fetch(url, config);
 
     const data = await response.json().catch(() => null);

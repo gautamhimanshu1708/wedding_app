@@ -244,10 +244,10 @@ export function LiveGalleryPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           <button
             onClick={() => setSelectedEventId('all')}
-            className={`text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition ${
+            className={`text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap transition ${
               selectedEventId === 'all'
-                ? 'bg-burgundy text-gold shadow-sm font-semibold'
-                : 'bg-white text-deepBrown/80 border border-gold/30 hover:border-gold'
+                ? 'bg-burgundy text-goldLight shadow-sm font-bold'
+                : 'bg-white text-deepBrown border border-gold/40 hover:border-gold font-medium'
             }`}
           >
             All Events
@@ -256,10 +256,10 @@ export function LiveGalleryPage() {
             <button
               key={evt._id}
               onClick={() => setSelectedEventId(evt._id)}
-              className={`text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition ${
+              className={`text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap transition ${
                 selectedEventId === evt._id
-                  ? 'bg-burgundy text-gold shadow-sm font-semibold'
-                  : 'bg-white text-deepBrown/80 border border-gold/30 hover:border-gold'
+                  ? 'bg-burgundy text-goldLight shadow-sm font-bold'
+                  : 'bg-white text-deepBrown border border-gold/40 hover:border-gold font-medium'
               }`}
             >
               {evt.name}

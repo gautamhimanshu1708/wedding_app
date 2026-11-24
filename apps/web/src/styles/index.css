@@ -19,12 +19,35 @@
     overflow-x: hidden;
   }
 
+  /* Ensure all form inputs always have dark, high-contrast, fully visible text */
+  input, textarea, select {
+    color: #1F1614 !important;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #6b7280 !important;
+    opacity: 1;
+  }
+
   h1, h2, h3, h4, .font-royal {
     font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
   }
 }
 
 /* Custom Royal Accents */
+.royal-page-bg {
+  background-color: #4A1222;
+  background-image: linear-gradient(180deg, #4A1222 0%, #681D32 50%, #1F1614 100%);
+  color: #F7F0E4;
+}
+
+.royal-text-gold-gradient {
+  background: linear-gradient(135deg, #FFF6E5 0%, #E2CA92 35%, #C5A15B 70%, #A6843D 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #E2CA92;
+}
+
 .royal-gradient-gold {
   background: linear-gradient(135deg, #E2CA92 0%, #C5A15B 50%, #A6843D 100%);
 }

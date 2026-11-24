@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ClerkProvider } from '@clerk/react';
-import { AuthProvider } from './context/AuthContext.jsx';
+import { AuthProvider, PAUSE_LOGIN } from './context/AuthContext.jsx';
 import App from './App.jsx';
 import './styles/index.css';
 
@@ -18,10 +18,10 @@ const queryClient = new QueryClient({
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-// If Clerk key is present, wrap with ClerkProvider for full Clerk auth
-// Otherwise fall back to built-in Royal Guest Login
+// If Clerk key is present and login is NOT paused, wrap with ClerkProvider
+// Otherwise fall back to frictionless local bypass testing
 function AppRoot() {
-  if (CLERK_PUBLISHABLE_KEY) {
+  if (CLERK_PUBLISHABLE_KEY && !PAUSE_LOGIN) {
     return (
       <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/w/royal-udaipur-2026">
         <QueryClientProvider client={queryClient}>

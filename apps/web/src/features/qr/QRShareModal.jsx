@@ -181,13 +181,13 @@ export function QRShareModal({ wedding, event, onClose }) {
                 placeholder="New Station Label (e.g. Table 4, Entry Gate)"
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
-                className="flex-1 text-xs px-3 py-2 rounded-xl border border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold bg-white"
+                className="flex-1 text-xs px-3 py-2 rounded-xl border border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold bg-white text-gray-900 placeholder:text-gray-400 font-medium"
                 required
               />
               <button
                 type="submit"
                 disabled={creating}
-                className="px-3.5 py-2 bg-burgundy hover:bg-burgundyLight text-gold font-semibold text-xs rounded-xl shadow-royal flex items-center gap-1 transition"
+                className="px-3.5 py-2 bg-burgundy hover:bg-burgundyLight text-goldLight font-bold text-xs rounded-xl shadow-royal flex items-center gap-1 transition"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>{creating ? 'Adding...' : 'Add QR'}</span>
@@ -297,7 +297,7 @@ export function QRShareModal({ wedding, event, onClose }) {
         <div className="grid grid-cols-2 gap-2 mt-4">
           <button
             onClick={handleCopy}
-            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-gold/60 bg-white hover:bg-champagne/30 text-xs font-semibold text-deepBrown transition"
+            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-gold/60 bg-white hover:bg-champagne/30 text-xs font-bold text-deepBrown transition"
           >
             {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-goldDark" />}
             <span>{copied ? 'Link Copied!' : 'Copy Link'}</span>
@@ -305,9 +305,9 @@ export function QRShareModal({ wedding, event, onClose }) {
 
           <button
             onClick={handleDownloadQR}
-            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-burgundy hover:bg-burgundyLight text-xs font-semibold text-ivory shadow-royal transition"
+            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-burgundy hover:bg-burgundyLight text-xs font-bold text-goldLight shadow-royal transition"
           >
-            <Download className="w-4 h-4 text-gold" />
+            <Download className="w-4 h-4 text-goldLight" />
             <span>Download PNG</span>
           </button>
         </div>

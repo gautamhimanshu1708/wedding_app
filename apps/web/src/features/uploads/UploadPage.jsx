@@ -252,7 +252,7 @@ export function UploadPage() {
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="w-full text-xs font-medium p-3 rounded-xl border border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold bg-white shadow-sm"
+              className="w-full text-xs font-semibold p-3 rounded-xl border border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold bg-white text-gray-900 shadow-sm"
               required
               disabled={anyUploading}
             >
@@ -374,7 +374,7 @@ export function UploadPage() {
               placeholder="e.g. Beautiful Sangeet dance performance 💃🕺"
               maxLength={250}
               disabled={anyUploading}
-              className="w-full text-xs p-3 rounded-xl border border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold bg-white shadow-sm"
+              className="w-full text-xs p-3 rounded-xl border border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold bg-white text-gray-900 placeholder:text-gray-500 font-medium shadow-sm"
             />
           </div>
 

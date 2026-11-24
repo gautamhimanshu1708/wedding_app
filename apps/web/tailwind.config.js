@@ -7,6 +7,16 @@ export default {
   theme: {
     extend: {
       colors: {
+        burgundyDark: '#4A1222',
+        burgundyLight: '#852842',
+        burgundyDeep: '#3A0C18',
+        goldLight: '#E2CA92',
+        goldDark: '#A6843D',
+        goldMuted: '#8F7233',
+        deepBrownDark: '#1F1614',
+        deepBrownLight: '#473630',
+        champagneLight: '#F2E8D7',
+        champagneDark: '#D4C09E',
         burgundy: {
           DEFAULT: '#681D32',
           light: '#852842',

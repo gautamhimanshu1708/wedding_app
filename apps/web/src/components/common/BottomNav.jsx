@@ -38,7 +38,7 @@ export function BottomNav() {
                     </div>
                     <span
                       className={`text-[10px] mt-1 font-medium transition ${
-                        isActive ? 'text-gold font-bold' : 'text-champagne/80'
+                        isActive ? 'text-goldLight font-bold' : 'text-champagne font-medium'
                       }`}
                     >
                       {item.label}
@@ -55,7 +55,7 @@ export function BottomNav() {
               to={item.to}
               className={({ isActive }) =>
                 `flex flex-col items-center justify-center flex-1 h-full py-1 min-w-[50px] min-h-[44px] transition-colors ${
-                  isActive ? 'text-gold font-semibold' : 'text-champagne/70 hover:text-champagne'
+                  isActive ? 'text-goldLight font-bold' : 'text-champagne font-medium hover:text-white'
                 }`
               }
             >

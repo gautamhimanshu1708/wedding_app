@@ -18,9 +18,11 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/auth');
+  const handleLogout = async () => {
+    if (window.confirm('Are you sure you want to log out of your session?')) {
+      await logout();
+      navigate('/auth');
+    }
   };
 
   const userAvatar =

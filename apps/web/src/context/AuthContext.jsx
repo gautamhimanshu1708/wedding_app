@@ -60,7 +60,7 @@ async function resolveActiveWedding(memberships, setActiveWedding) {
 
 // ─── Clerk-backed provider ─────────────────────────────────────────────────
 function ClerkAuthProvider({ children }) {
-  const { isSignedIn, getToken, isLoaded } = useClerkAuth();
+  const { isSignedIn, getToken, isLoaded, signOut } = useClerkAuth();
   const [user, setUser] = useState(null);
   const [memberships, setMemberships] = useState([]);
   const [activeWedding, setActiveWeddingState] = useState(null);
@@ -125,12 +125,24 @@ function ClerkAuthProvider({ children }) {
     } catch (err) { console.error('refreshMemberships:', err); }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      if (signOut) {
+        await signOut();
+      }
+    } catch (err) {
+      console.warn('[ClerkLogout] signOut error:', err);
+    }
     api.setTokenGetter(null);
+    localStorage.removeItem('royal_wedding_token');
     localStorage.removeItem('royal_active_wedding_id');
+    localStorage.removeItem('royal_admin_mode');
+    sessionStorage.clear();
     socketService.disconnect();
-    setUser(null); setMemberships([]); setActiveWeddingState(null);
-  }, []);
+    setUser(null);
+    setMemberships([]);
+    setActiveWeddingState(null);
+  }, [signOut]);
 
   return (
     <AuthContext.Provider value={{
@@ -232,10 +244,15 @@ function GuestAuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    api.setTokenGetter(null);
     localStorage.removeItem('royal_wedding_token');
     localStorage.removeItem('royal_active_wedding_id');
+    localStorage.removeItem('royal_admin_mode');
+    sessionStorage.clear();
     socketService.disconnect();
-    setUser(null); setMemberships([]); setActiveWeddingState(null);
+    setUser(null);
+    setMemberships([]);
+    setActiveWeddingState(null);
   }, []);
 
   return (
@@ -250,7 +267,144 @@ function GuestAuthProvider({ children }) {
   );
 }
 
+export const PAUSE_LOGIN = false; // Restored Clerk login
+
+// ─── Local Bypass Provider (Login Paused for Frictionless Local Testing) ───────
+function LocalBypassAuthProvider({ children }) {
+  const [user, setUser] = useState({
+    _id: 'user_dev_host_001',
+    id: 'user_dev_host_001',
+    clerkUserId: 'user_dev_host_001',
+    name: 'Aarav & Diya (Admin Host)',
+    email: 'host@royalwedding.com',
+    avatar: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=300&q=80',
+    role: 'owner',
+    userRole: 'owner',
+  });
+  const [memberships, setMemberships] = useState([]);
+  const [activeWedding, setActiveWeddingState] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const selectWedding = useCallback((wedding) => {
+    if (!wedding) return;
+    const normalized = { ...wedding, _id: wedding._id || wedding.id, id: wedding.id || wedding._id };
+    setActiveWeddingState(normalized);
+    localStorage.setItem('royal_active_wedding_id', normalized._id);
+    socketService.joinWedding(normalized._id);
+  }, []);
+
+  useEffect(() => {
+    async function initBypassSession() {
+      try {
+        let token = localStorage.getItem('royal_wedding_token');
+
+        // Ensure we have a valid test JWT from local backend
+        if (!token) {
+          const res = await api.post('/auth/guest-demo-login', {
+            name: 'Aarav & Diya (Admin Host)',
+            email: 'host@royalwedding.com',
+          });
+          if (res.success && res.data?.token) {
+            token = res.data.token;
+            localStorage.setItem('royal_wedding_token', token);
+          }
+        }
+
+        if (token) {
+          socketService.connect(token);
+        }
+
+        // Fetch default wedding
+        const wedRes = await api.get('/weddings/slug/royal-udaipur-2026').catch(() => null);
+        if (wedRes && wedRes.success && wedRes.data) {
+          const w = wedRes.data;
+          selectWedding(w);
+          // Auto-claim admin ownership on local backend
+          await api.post(`/weddings/${w._id}/claim-admin`, {}).catch(() => {});
+          setMemberships([
+            {
+              weddingId: w,
+              role: 'owner',
+              status: 'active',
+            },
+          ]);
+        }
+      } catch (err) {
+        console.warn('[LocalBypassAuth] Init note:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    initBypassSession();
+  }, [selectWedding]);
+
+  const loginAsGuest = useCallback(async (name = 'Royal Guest', email = null) => {
+    try {
+      setLoading(true);
+      const res = await api.post('/auth/guest-demo-login', { name, email });
+      if (res.success && res.data.token) {
+        localStorage.setItem('royal_wedding_token', res.data.token);
+        const guestUser = {
+          ...res.data.user,
+          role: 'guest',
+          userRole: 'guest',
+        };
+        setUser(guestUser);
+        socketService.connect(res.data.token);
+        return guestUser;
+      }
+    } catch (err) {
+      console.error('Guest login failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const switchToAdmin = useCallback(async () => {
+    setUser({
+      _id: 'user_dev_host_001',
+      id: 'user_dev_host_001',
+      clerkUserId: 'user_dev_host_001',
+      name: 'Aarav & Diya (Admin Host)',
+      email: 'host@royalwedding.com',
+      avatar: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=300&q=80',
+      role: 'owner',
+      userRole: 'owner',
+    });
+    if (activeWedding?._id) {
+      await api.post(`/weddings/${activeWedding._id}/claim-admin`, {}).catch(() => {});
+    }
+  }, [activeWedding?._id]);
+
+  const refreshMemberships = useCallback(async () => [], []);
+  const logout = useCallback(() => {
+    // Reset to default host
+    switchToAdmin();
+  }, [switchToAdmin]);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        memberships,
+        activeWedding,
+        setActiveWedding: selectWedding,
+        loading,
+        isAuthenticated: true, // Always authenticated in bypass test mode
+        loginAsGuest,
+        switchToAdmin,
+        logout,
+        refreshMemberships,
+        isBypassMode: true,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
 export function AuthProvider({ children }) {
+  if (PAUSE_LOGIN) return <LocalBypassAuthProvider>{children}</LocalBypassAuthProvider>;
   if (CLERK_KEY) return <ClerkAuthProvider>{children}</ClerkAuthProvider>;
   return <GuestAuthProvider>{children}</GuestAuthProvider>;
 }

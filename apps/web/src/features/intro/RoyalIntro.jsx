@@ -153,7 +153,14 @@ export function RoyalIntro() {
     : 'Auspicious Date';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-burgundyDark via-burgundy to-deepBrown flex flex-col justify-between p-6 text-ivory relative overflow-hidden select-none">
+    <div
+      className="min-h-screen royal-page-bg bg-gradient-to-b from-burgundyDark via-burgundy to-deepBrown flex flex-col justify-between p-6 text-ivory relative overflow-hidden select-none"
+      style={{
+        backgroundColor: '#4A1222',
+        backgroundImage: 'linear-gradient(180deg, #4A1222 0%, #681D32 50%, #1F1614 100%)',
+        color: '#F7F0E4',
+      }}
+    >
       {/* Decorative Royal Corner Arches */}
       <div className="absolute top-0 left-0 w-32 h-32 border-t-2 border-l-2 border-gold/40 rounded-br-full pointer-events-none opacity-40" />
       <div className="absolute top-0 right-0 w-32 h-32 border-t-2 border-r-2 border-gold/40 rounded-bl-full pointer-events-none opacity-40" />
@@ -169,12 +176,12 @@ export function RoyalIntro() {
 
         {isAuthenticated ? (
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-champagne/80 font-medium hidden sm:inline">
+            <span className="text-[11px] text-[#E8D8BD] font-medium hidden sm:inline">
               Welcome, {user?.name || 'Guest'}
             </span>
             <button
               onClick={() => handleEnterGallery()}
-              className="text-xs text-champagne/90 hover:text-gold transition font-medium px-3 py-1 rounded-full border border-gold/30 hover:border-gold/60"
+              className="text-xs text-[#E8D8BD] hover:text-[#FFF6E5] transition font-medium px-3 py-1 rounded-full border border-gold/30 hover:border-gold/60"
             >
               All Photos →
             </button>
@@ -182,7 +189,7 @@ export function RoyalIntro() {
         ) : (
           <button
             onClick={() => navigate(`/auth?redirect=/live&slug=${targetSlug}`)}
-            className="text-xs text-champagne/90 hover:text-gold transition font-medium px-3 py-1.5 rounded-full border border-gold/40 bg-gold/10"
+            className="text-xs text-[#E8D8BD] hover:text-[#FFF6E5] transition font-medium px-3 py-1.5 rounded-full border border-gold/40 bg-gold/10"
           >
             Guest Login
           </button>
@@ -195,17 +202,25 @@ export function RoyalIntro() {
           <Crown className="w-8 h-8" />
         </div>
 
-        <p className="text-[10px] uppercase tracking-[0.25em] text-champagne/90 font-medium mb-1">
+        <p className="text-[11px] uppercase tracking-[0.25em] text-[#E8D8BD] font-semibold mb-2">
           Cordially Inviting You To Celebrate
         </p>
 
-        <h1 className="font-royal text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-goldLight via-gold to-goldDark leading-tight mb-2">
+        <h1
+          className="font-royal text-3xl sm:text-4xl font-bold leading-tight mb-2 tracking-wide royal-text-gold-gradient"
+          style={{
+            background: 'linear-gradient(135deg, #FFF6E5 0%, #E2CA92 35%, #C5A15B 70%, #A6843D 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            color: '#E2CA92',
+          }}
+        >
           {coupleNames}
         </h1>
 
-        <div className="text-[11px] text-champagne/80 space-y-0.5 mb-4">
-          <p className="font-medium text-champagne">{formattedDate}</p>
-          <p className="text-champagne/60">{wedding.venue}</p>
+        <div className="text-[13px] text-[#F2E8D7] space-y-1 mb-5">
+          <p className="font-semibold text-[#F2E8D7] tracking-wide">{formattedDate}</p>
+          <p className="text-[#E8D8BD] font-medium">{wedding.venue}</p>
         </div>
 
         {/* Deactivated QR Banner if any */}
@@ -222,14 +237,14 @@ export function RoyalIntro() {
             <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-green-500/20 text-green-400 mb-2 border border-green-400/40">
               <CheckCircle2 className="w-5 h-5" />
             </div>
-            <p className="text-[11px] text-champagne uppercase font-bold tracking-wider">
+            <p className="text-[11px] text-[#E8D8BD] uppercase font-bold tracking-wider">
               Ceremony Unlocked
             </p>
             <h3 className="font-royal text-xl font-bold text-gold mt-0.5">
               {unlockedEvent.name}
             </h3>
             {unlockedEvent.description && (
-              <p className="text-xs text-champagne/80 mt-1 line-clamp-2">
+              <p className="text-xs text-[#E8D8BD]/90 mt-1 line-clamp-2">
                 {unlockedEvent.description}
               </p>
             )}
@@ -237,23 +252,32 @@ export function RoyalIntro() {
             <button
               onClick={() => handleEnterGallery(unlockedEvent.id)}
               disabled={joining}
-              className="mt-4 w-full py-3 px-4 rounded-xl bg-gradient-to-r from-goldDark via-gold to-goldLight text-burgundy font-bold text-xs shadow-royal-lg hover:brightness-110 active:scale-95 transition flex items-center justify-center gap-1.5"
+              style={{
+                background: 'linear-gradient(135deg, #FFF3D6 0%, #E2CA92 40%, #C5A15B 100%)',
+                color: '#2B0E17',
+              }}
+              className="mt-4 w-full py-3.5 px-4 rounded-xl font-bold text-xs shadow-royal-lg hover:brightness-105 active:scale-95 transition flex items-center justify-center gap-1.5"
             >
               <span>{joining ? 'Entering...' : `Enter ${unlockedEvent.name} Photos`}</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-4 h-4 text-[#2B0E17]" />
             </button>
           </div>
         ) : (
           /* NO EVENT SELECTED YET - SCANNER PROMPT */
-          <div className="bg-black/30 border border-gold/30 rounded-3xl p-5 mb-5 shadow-inner backdrop-blur-sm">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gold/15 text-gold border border-gold/40 mb-3">
-              <QrCode className="w-6 h-6 text-gold" />
+          <div
+            className="border border-[#C5A15B]/40 rounded-3xl p-5 mb-5 shadow-2xl backdrop-blur-md"
+            style={{
+              backgroundColor: 'rgba(32, 12, 18, 0.75)',
+            }}
+          >
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#C5A15B]/20 text-[#E2CA92] border border-[#C5A15B]/50 mb-3 shadow-royal">
+              <QrCode className="w-6 h-6 text-[#E2CA92]" />
             </div>
 
-            <h3 className="font-royal text-base font-bold text-gold mb-1">
+            <h3 className="font-royal text-lg font-bold text-[#E2CA92] mb-1.5">
               No Ceremony Selected Yet
             </h3>
-            <p className="text-xs text-champagne/80 leading-relaxed max-w-xs mx-auto mb-4">
+            <p className="text-xs text-[#F2E8D7] font-normal leading-relaxed max-w-xs mx-auto mb-4">
               To view &amp; upload photographs for a ceremony, please scan the QR code placed at your venue table or event banner.
             </p>
 
@@ -261,10 +285,15 @@ export function RoyalIntro() {
             <button
               type="button"
               onClick={() => setScannerOpen(true)}
-              className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-goldDark via-gold to-goldLight text-burgundy font-bold text-xs shadow-royal hover:brightness-110 active:scale-95 transition flex items-center justify-center gap-2"
+              style={{
+                backgroundColor: '#D4AF37',
+                backgroundImage: 'linear-gradient(135deg, #FFF3D6 0%, #E2CA92 40%, #C5A15B 100%)',
+                color: '#2B0E17',
+              }}
+              className="w-full py-3.5 px-5 rounded-2xl font-bold text-xs shadow-royal-lg hover:brightness-105 active:scale-95 transition flex items-center justify-center gap-2"
             >
-              <Camera className="w-4 h-4 text-burgundy stroke-[2.5]" />
-              <span>📷 Scan Ceremony QR at Venue</span>
+              <Camera className="w-4 h-4 text-[#2B0E17] stroke-[2.5]" />
+              <span className="tracking-wide">Scan Ceremony QR at Venue</span>
             </button>
           </div>
         )}
@@ -273,24 +302,24 @@ export function RoyalIntro() {
         <button
           onClick={() => handleEnterGallery()}
           disabled={joining}
-          className="text-xs text-champagne/70 hover:text-gold transition font-medium flex items-center justify-center gap-1.5 mx-auto hover:underline"
+          className="text-xs text-[#E8D8BD] hover:text-[#FFF6E5] transition font-semibold flex items-center justify-center gap-1.5 mx-auto hover:underline"
         >
           <span>Or explore the general wedding photo feed →</span>
         </button>
 
         {/* Couple & Admin Portal Entry */}
-        <div className="mt-5 pt-4 border-t border-gold/20">
+        <div className="mt-5 pt-4 border-t border-[#C5A15B]/25">
           <button
             onClick={() => navigate('/auth?redirect=/admin')}
-            className="text-[11px] text-champagne/60 hover:text-gold transition flex items-center justify-center gap-1 mx-auto"
+            className="text-xs text-[#E8D8BD] hover:text-[#FFF6E5] transition flex items-center justify-center gap-1.5 mx-auto font-medium"
           >
-            <Crown className="w-3.5 h-3.5 text-gold" />
+            <Crown className="w-3.5 h-3.5 text-[#C5A15B]" />
             <span>Couple / Admin Portal Login</span>
           </button>
         </div>
       </div>
 
-      <footer className="text-center text-[10px] text-champagne/50 z-10 safe-pb">
+      <footer className="text-center text-[11px] text-[#E8D8BD]/80 font-medium z-10 safe-pb">
         <p>Royal Wedding Photo Sharing Platform • Fast &amp; Private</p>
       </footer>
 

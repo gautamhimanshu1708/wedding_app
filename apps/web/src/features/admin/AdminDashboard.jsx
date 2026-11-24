@@ -22,11 +22,12 @@ import {
   AlertCircle,
   FolderOpen,
   ExternalLink,
+  LogOut,
 } from 'lucide-react';
 import { GoldDivider } from '../../components/common/OrnamentalBorder.jsx';
 
 export function AdminDashboard() {
-  const { activeWedding, setActiveWedding, user, isAuthenticated, loading: authLoading } = useAuth();
+  const { activeWedding, setActiveWedding, user, isAuthenticated, loading: authLoading, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -352,16 +353,31 @@ export function AdminDashboard() {
             <h1 className="font-royal text-base font-bold text-gold">Couple & Admin Portal</h1>
             <p className="text-[10px] text-champagne/70">{activeWedding?.title}</p>
           </div>
-          <button
-            onClick={() => {
-              setSelectedEventForQR(null);
-              setQrModalOpen(true);
-            }}
-            className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-gold/20 text-gold border border-gold/40"
-          >
-            <QrCode className="w-3.5 h-3.5" />
-            <span>Wedding QR</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setSelectedEventForQR(null);
+                setQrModalOpen(true);
+              }}
+              className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-gold/20 text-gold border border-gold/40 hover:bg-gold/30 transition"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span>Wedding QR</span>
+            </button>
+            <button
+              onClick={async () => {
+                if (window.confirm('Log out of Admin Portal?')) {
+                  await logout();
+                  navigate('/auth');
+                }
+              }}
+              title="Log out of Admin Portal"
+              className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-white/10 hover:bg-red-950/70 text-champagne hover:text-red-300 border border-gold/30 transition"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -383,8 +399,8 @@ export function AdminDashboard() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 py-3 px-4 text-xs font-semibold whitespace-nowrap border-b-2 transition ${
                   isActive
-                    ? 'border-burgundy text-burgundy bg-champagne/10'
-                    : 'border-transparent text-gray-500 hover:text-deepBrown'
+                    ? 'border-burgundy text-burgundy bg-champagne/20 font-bold'
+                    : 'border-transparent text-gray-600 hover:text-burgundy font-medium'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -465,19 +481,19 @@ export function AdminDashboard() {
                   placeholder="Event Name (e.g. Haldi, Sangeet)"
                   value={newEventName}
                   onChange={(e) => setNewEventName(e.target.value)}
-                  className="text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none"
+                  className="text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white placeholder:text-gray-500 font-medium"
                   required
                 />
                 <input
                   type="datetime-local"
                   value={newEventDate}
                   onChange={(e) => setNewEventDate(e.target.value)}
-                  className="text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none"
+                  className="text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium"
                   required
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2.5 bg-burgundy text-gold font-semibold text-xs rounded-xl shadow-royal flex items-center justify-center gap-1.5 hover:bg-burgundyLight"
+                  className="px-4 py-2.5 bg-burgundy hover:bg-burgundyLight text-goldLight font-bold text-xs rounded-xl shadow-royal flex items-center justify-center gap-1.5 transition"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Event</span>
@@ -490,11 +506,11 @@ export function AdminDashboard() {
               {events.map((evt) => (
                 <div
                   key={evt._id}
-                  className="bg-white p-4 rounded-2xl border border-gold/30 shadow-sm flex items-center justify-between"
+                  className="bg-white p-4 rounded-2xl border border-gold/40 shadow-sm flex items-center justify-between"
                 >
                   <div>
-                    <h4 className="font-royal font-bold text-burgundy">{evt.name}</h4>
-                    <p className="text-[11px] text-gray-500">
+                    <h4 className="font-royal font-bold text-base text-burgundy">{evt.name}</h4>
+                    <p className="text-[11px] text-gray-600 font-medium">
                       {new Date(evt.date).toLocaleDateString(undefined, {
                         month: 'short',
                         day: 'numeric',
@@ -502,7 +518,7 @@ export function AdminDashboard() {
                         minute: '2-digit',
                       })}
                     </p>
-                    <p className="text-[11px] text-goldDark font-semibold mt-1">
+                    <p className="text-[11px] text-burgundy font-bold mt-1">
                       {evt.photoCount || 0} photos
                     </p>
                   </div>
@@ -512,9 +528,9 @@ export function AdminDashboard() {
                       setSelectedEventForQR(evt);
                       setQrModalOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-champagne/40 border border-gold/50 text-xs text-burgundy font-semibold hover:bg-champagne/70 transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-champagne/40 border border-gold/50 text-xs text-burgundy font-bold hover:bg-champagne/70 transition"
                   >
-                    <QrCode className="w-4 h-4 text-goldDark" />
+                    <QrCode className="w-4 h-4 text-burgundy" />
                     <span>Get QR</span>
                   </button>
                 </div>
@@ -662,17 +678,17 @@ export function AdminDashboard() {
               <form onSubmit={handleSaveSettings} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-deepBrown mb-1">Wedding Title</label>
-                  <input type="text" value={weddingTitle} onChange={(e) => setWeddingTitle(e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none" required />
+                  <input type="text" value={weddingTitle} onChange={(e) => setWeddingTitle(e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium" required />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-deepBrown mb-1">Venue &amp; City</label>
-                  <input type="text" value={venue} onChange={(e) => setVenue(e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none" required />
+                  <input type="text" value={venue} onChange={(e) => setVenue(e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium" required />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-deepBrown mb-1">Welcome Message for Guests</label>
-                  <textarea rows={3} value={welcomeMessage} onChange={(e) => setWelcomeMessage(e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none resize-none" />
+                  <textarea rows={3} value={welcomeMessage} onChange={(e) => setWelcomeMessage(e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none text-gray-900 bg-white font-medium resize-none" />
                 </div>
-                <button type="submit" className="w-full py-2.5 bg-burgundy hover:bg-burgundyLight text-gold font-bold text-xs rounded-xl shadow-royal flex items-center justify-center gap-1.5 transition">
+                <button type="submit" className="w-full py-2.5 bg-burgundy hover:bg-burgundyLight text-goldLight font-bold text-xs rounded-xl shadow-royal flex items-center justify-center gap-1.5 transition">
                   <Save className="w-4 h-4" />
                   <span>Save Wedding Settings</span>
                 </button>
@@ -781,7 +797,7 @@ export function AdminDashboard() {
                       placeholder="e.g. 1AbCdEfGhIjKlMnOpQrStUvWx or folder URL"
                       value={driveFolderId}
                       onChange={(e) => setDriveFolderId(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono"
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono text-gray-900 placeholder:text-gray-400 font-medium"
                     />
                     <p className="text-[10px] text-gray-500 mt-0.5">
                       Share this folder with Editor access to your Service Account email.
@@ -797,12 +813,12 @@ export function AdminDashboard() {
                       placeholder='Paste your downloaded service-account.json content here {"type": "service_account", ...}'
                       value={driveJsonInput}
                       onChange={(e) => setDriveJsonInput(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono resize-none"
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono text-gray-900 placeholder:text-gray-400 resize-none font-medium"
                     />
                   </div>
 
                   <div className="relative flex items-center justify-center my-1">
-                    <span className="text-[10px] text-gray-400 bg-white px-2 uppercase font-bold">
+                    <span className="text-[10px] text-gray-500 bg-white px-2 uppercase font-bold">
                       or enter manually
                     </span>
                   </div>
@@ -816,7 +832,7 @@ export function AdminDashboard() {
                       placeholder="service-account@project.iam.gserviceaccount.com"
                       value={driveClientEmail}
                       onChange={(e) => setDriveClientEmail(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono"
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono text-gray-900 placeholder:text-gray-400 font-medium"
                     />
                   </div>
 
@@ -829,7 +845,7 @@ export function AdminDashboard() {
                       placeholder="-----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----"
                       value={drivePrivateKey}
                       onChange={(e) => setDrivePrivateKey(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono resize-none"
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-mono text-gray-900 placeholder:text-gray-400 resize-none font-medium"
                     />
                   </div>
 
@@ -895,6 +911,30 @@ export function AdminDashboard() {
                   <span>Save Access Settings</span>
                 </button>
               </div>
+            </div>
+
+            {/* Account & Session / Logout */}
+            <div className="bg-white rounded-2xl border border-red-200/80 p-5 shadow-sm space-y-3">
+              <div className="flex items-center gap-2 text-burgundy">
+                <LogOut className="w-5 h-5 text-red-600" />
+                <h3 className="font-royal text-sm font-bold">Account &amp; Session</h3>
+              </div>
+              <p className="text-xs text-gray-600">
+                Currently signed in as <span className="font-semibold text-deepBrown">{user?.name || user?.email || 'Admin'}</span>. Log out of this device when you are done managing wedding ceremonies and settings.
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (window.confirm('Are you sure you want to log out of the Royal Wedding platform?')) {
+                    await logout();
+                    navigate('/auth');
+                  }
+                }}
+                className="w-full py-3 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold text-xs rounded-xl shadow-sm flex items-center justify-center gap-2 transition active:scale-95"
+              >
+                <LogOut className="w-4 h-4 text-red-600" />
+                <span>Log Out of Admin Portal</span>
+              </button>
             </div>
           </div>
         )}

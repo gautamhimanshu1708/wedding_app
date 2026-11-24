@@ -35,16 +35,31 @@ export function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-burgundyDark via-burgundy to-deepBrown flex flex-col items-center justify-center p-4">
+    <div
+      className="min-h-screen royal-page-bg bg-gradient-to-b from-burgundyDark via-burgundy to-deepBrown flex flex-col items-center justify-center p-4"
+      style={{
+        backgroundColor: '#4A1222',
+        backgroundImage: 'linear-gradient(180deg, #4A1222 0%, #681D32 50%, #1F1614 100%)',
+        color: '#F7F0E4',
+      }}
+    >
       {/* Top Brand Header */}
       <div className="mb-4 text-center">
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gold/15 border border-gold/50 text-gold mb-2.5 shadow-royal">
           {mode === 'admin' ? <ShieldCheck className="w-7 h-7 text-gold" /> : <Crown className="w-7 h-7" />}
         </div>
-        <h1 className="font-royal text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-goldLight via-gold to-goldDark">
+        <h1
+          className="font-royal text-2xl sm:text-3xl font-bold royal-text-gold-gradient"
+          style={{
+            background: 'linear-gradient(135deg, #FFF6E5 0%, #E2CA92 35%, #C5A15B 70%, #A6843D 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            color: '#E2CA92',
+          }}
+        >
           {mode === 'admin' ? 'Couple & Admin Portal' : 'Royal Wedding Access'}
         </h1>
-        <p className="text-xs text-champagne/80 mt-1 max-w-xs mx-auto">
+        <p className="text-xs text-[#E8D8BD] mt-1 max-w-xs mx-auto">
           {mode === 'admin'
             ? 'Sign in to configure ceremonies, QR access & live photo moderation'
             : 'Sign in or sign up to browse & share memories in the live feed'}
