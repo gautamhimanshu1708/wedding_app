@@ -6,7 +6,7 @@ const weddingSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     slug: { type: String, required: true, unique: true, index: true },
-    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, default: null },
     coupleNames: {
       partner1: { type: String, required: true },
       partner2: { type: String, required: true },
@@ -37,6 +37,7 @@ const weddingSchema = new mongoose.Schema(
       storageMode: { type: String, enum: ['local', 'google_drive'], default: 'local' },
     },
     status: { type: String, enum: ['active', 'archived', 'draft'], default: 'active' },
+    adminPin: { type: String, default: '1211', trim: true },
   },
   { timestamps: true }
 );

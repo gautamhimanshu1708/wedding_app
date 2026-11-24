@@ -23,6 +23,8 @@ import {
   FolderOpen,
   ExternalLink,
   LogOut,
+  Lock,
+  KeyRound,
 } from 'lucide-react';
 import { GoldDivider } from '../../components/common/OrnamentalBorder.jsx';
 
@@ -30,11 +32,38 @@ export function AdminDashboard() {
   const { activeWedding, setActiveWedding, user, isAuthenticated, loading: authLoading, logout } = useAuth();
   const navigate = useNavigate();
 
+  const weddingId = activeWedding?._id || activeWedding?.id || 'royal-udaipur-2026';
+  const isOwnerByRole = Boolean(
+    activeWedding?.userRole === 'owner' ||
+    (activeWedding?.ownerId && user && (activeWedding.ownerId === user._id || activeWedding.ownerId === user.clerkUserId))
+  );
+
+  // 4-Digit Security PIN Gate State
+  const [pinUnlocked, setPinUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(null);
+  const [pinVerifying, setPinVerifying] = useState(false);
+
+  // Custom PIN Settings State
+  const [customPinInput, setCustomPinInput] = useState('');
+  const [customPinSaved, setCustomPinSaved] = useState(false);
+  const [customPinError, setCustomPinError] = useState(null);
+  const [customPinSaving, setCustomPinSaving] = useState(false);
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate('/auth?redirect=/admin');
     }
   }, [authLoading, isAuthenticated, navigate]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && weddingId) {
+      const isSessionUnlocked = sessionStorage.getItem(`royal_admin_unlocked_${weddingId}`) === 'true';
+      if (isSessionUnlocked) {
+        setPinUnlocked(true);
+      }
+    }
+  }, [weddingId]);
 
   const [activeTab, setActiveTab] = useState('analytics'); // analytics, events, guests, moderation, settings
   const [stats, setStats] = useState(null);
@@ -103,12 +132,9 @@ export function AdminDashboard() {
 
   useEffect(() => {
     async function loadAdminData() {
-      if (!activeWedding?._id) return;
+      if (!activeWedding?._id || !pinUnlocked) return;
       try {
         setLoading(true);
-
-        // Ensure user has admin/owner privileges on this wedding
-        await api.post(`/weddings/${activeWedding._id}/claim-admin`, {}).catch(() => {});
 
         const [statsRes, eventsRes, membersRes, reportsRes, storageRes] = await Promise.all([
           api.get(`/weddings/${activeWedding._id}/stats`).catch(() => ({ success: false })),
@@ -135,7 +161,31 @@ export function AdminDashboard() {
       }
     }
     loadAdminData();
-  }, [activeWedding?._id]);
+  }, [activeWedding?._id, pinUnlocked]);
+
+  // Handle PIN Verification Gate Submit
+  const handleVerifyPin = async (e) => {
+    e.preventDefault();
+    if (!pinInput.trim()) return;
+    setPinVerifying(true);
+    setPinError(null);
+    try {
+      const res = await api.post(`/weddings/${weddingId}/verify-pin`, {
+        pin: pinInput.trim(),
+      });
+      if (res.success) {
+        setPinUnlocked(true);
+        sessionStorage.setItem(`royal_admin_unlocked_${weddingId}`, 'true');
+      } else {
+        throw new Error(res.error || 'Incorrect PIN');
+      }
+    } catch (err) {
+      setPinError(err.data?.error || err.message || 'Incorrect 4-digit PIN');
+      setPinInput('');
+    } finally {
+      setPinVerifying(false);
+    }
+  };
 
   // Handle Event Creation with Instant Optimistic UI (0ms perceived wait)
   const handleCreateEvent = async (e) => {
@@ -171,17 +221,6 @@ export function AdminDashboard() {
         name: nameVal,
         description: descVal,
         date: dateVal,
-      }).catch(async (err) => {
-        if (err.message && err.message.includes('Insufficient permissions')) {
-          // Attempt immediate admin claim & retry once
-          await api.post(`/weddings/${weddingId}/claim-admin`, {});
-          return await api.post(`/weddings/${weddingId}/events`, {
-            name: nameVal,
-            description: descVal,
-            date: dateVal,
-          });
-        }
-        throw err;
       });
 
       if (res && res.success) {
@@ -359,6 +398,89 @@ export function AdminDashboard() {
       alert('Failed to update settings: ' + err.message);
     }
   };
+
+  // Handle Custom 4-Digit Admin PIN Update
+  const handleUpdateCustomPin = async (e) => {
+    e.preventDefault();
+    if (!customPinInput.trim() || !/^\d{4}$/.test(customPinInput.trim())) {
+      setCustomPinError('Passcode must be exactly 4 numeric digits (e.g. 1211)');
+      return;
+    }
+    setCustomPinSaving(true);
+    setCustomPinError(null);
+    try {
+      const res = await api.put(`/weddings/${weddingId}/admin-pin`, {
+        newPin: customPinInput.trim(),
+      });
+      if (res.success) {
+        setCustomPinSaved(true);
+        setCustomPinInput('');
+        setTimeout(() => setCustomPinSaved(false), 3000);
+      } else {
+        throw new Error(res.error || 'Failed to update passcode');
+      }
+    } catch (err) {
+      setCustomPinError(err.data?.error || err.message || 'Failed to update passcode');
+    } finally {
+      setCustomPinSaving(false);
+    }
+  };
+
+  // PIN Gate Screen for unverified visitors
+  if (!pinUnlocked) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-burgundyDark via-burgundy to-deepBrown flex flex-col items-center justify-center p-4 text-ivory">
+        <div className="w-full max-w-sm bg-white/95 text-deepBrown rounded-3xl p-6 border-2 border-gold/40 shadow-royal text-center space-y-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-burgundy/10 text-burgundy mx-auto border border-gold/40 shadow-sm">
+            <Lock className="w-7 h-7 text-burgundy" />
+          </div>
+          <div>
+            <h2 className="font-royal text-xl font-bold text-burgundy">Organizer Access</h2>
+            <p className="text-xs text-gray-600 mt-1">
+              Enter the 4-digit wedding passcode to manage ceremonies, QR codes, and guests.
+            </p>
+          </div>
+          {pinError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2 text-left">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>{pinError}</span>
+            </div>
+          )}
+          <form onSubmit={handleVerifyPin} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                autoFocus
+                placeholder="••••"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                className="w-40 text-center tracking-[0.5em] text-2xl font-bold p-3 rounded-2xl border-2 border-gold/60 focus:border-burgundy focus:ring-2 focus:ring-gold focus:outline-none bg-champagne/15 text-burgundy shadow-inner"
+              />
+              <p className="text-[11px] text-gray-500 mt-1.5">Default PIN: 1211</p>
+            </div>
+            <button
+              type="submit"
+              disabled={pinVerifying || pinInput.length < 4}
+              className="w-full py-3 bg-gradient-to-r from-goldDark via-gold to-goldLight text-burgundy font-bold text-xs rounded-xl shadow-royal hover:brightness-105 active:scale-95 disabled:opacity-50 transition"
+            >
+              {pinVerifying ? 'Verifying Passcode...' : 'Unlock Admin Portal'}
+            </button>
+          </form>
+          <div className="pt-2 border-t border-gray-100">
+            <button
+              onClick={() => navigate('/live')}
+              className="text-xs text-gray-500 hover:text-burgundy font-semibold flex items-center justify-center gap-1 mx-auto"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Return to Guest Live Feed</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-ivory pb-24 safe-pb">
@@ -943,6 +1065,59 @@ export function AdminDashboard() {
                   <span>Save Access Settings</span>
                 </button>
               </div>
+            </div>
+
+            {/* Admin Security PIN Configuration */}
+            <div className="bg-white p-6 rounded-2xl border border-gold/40 shadow-sm space-y-3">
+              <div className="flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-burgundy" />
+                <h3 className="font-royal text-base font-bold text-burgundy">Organizer Security Passcode (PIN)</h3>
+              </div>
+              <p className="text-xs text-gray-600">
+                Change the 4-digit PIN required to access this Couple &amp; Admin Portal. Keep this secret between the couple and organizers.
+              </p>
+
+              {customPinSaved && (
+                <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-xs flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                  <span>Passcode updated successfully!</span>
+                </div>
+              )}
+
+              {customPinError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>{customPinError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleUpdateCustomPin} className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-deepBrown mb-1">
+                    New 4-Digit Passcode
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="Enter 4 digits (e.g. 1211)"
+                    value={customPinInput}
+                    onChange={(e) => setCustomPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none bg-white text-gray-900 tracking-widest font-mono"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Must be exactly 4 numeric digits. Default is 1211.
+                  </p>
+                </div>
+                <button
+                  type="submit"
+                  disabled={customPinSaving || customPinInput.length !== 4}
+                  className="w-full py-2.5 bg-burgundy hover:bg-burgundyLight text-gold font-bold text-xs rounded-xl shadow-royal flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>{customPinSaving ? 'Updating Passcode...' : 'Save New Passcode'}</span>
+                </button>
+              </form>
             </div>
 
             {/* Account & Session / Logout */}

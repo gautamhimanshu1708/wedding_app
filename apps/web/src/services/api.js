@@ -35,10 +35,6 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
-      headers['x-admin-portal'] = 'true';
-    }
-
     if (!(options.body instanceof FormData) && !headers['Content-Type']) {
       headers['Content-Type'] = 'application/json';
     }

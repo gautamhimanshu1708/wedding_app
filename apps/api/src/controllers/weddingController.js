@@ -272,12 +272,16 @@ export async function getWeddingStats(req, res, next) {
 }
 
 /**
- * Claim or elevate admin/owner role for a wedding.
- * Used when couple/admin enters the Admin Dashboard.
+ * Verify 4-Digit Admin PIN to unlock couple & organizer privileges.
  */
-export async function claimAdminRole(req, res, next) {
+export async function verifyAdminPin(req, res, next) {
   try {
     const weddingId = req.params.weddingId || req.params.id;
+    const { pin } = req.body;
+    if (!pin) {
+      return res.status(400).json({ success: false, error: '4-digit PIN is required' });
+    }
+
     let wedding = await Wedding.findById(weddingId);
     if (!wedding) {
       wedding = await Wedding.findOne({ slug: weddingId.toString().toLowerCase() });
@@ -286,6 +290,12 @@ export async function claimAdminRole(req, res, next) {
       return res.status(404).json({ success: false, error: 'Wedding not found' });
     }
 
+    const expectedPin = (wedding.adminPin || '1211').toString().trim();
+    if (pin.toString().trim() !== expectedPin) {
+      return res.status(401).json({ success: false, error: 'Incorrect 4-digit Admin PIN' });
+    }
+
+    // PIN is correct! Grant this user ADMIN role on this wedding
     let membership = await Membership.findOne({
       weddingId: wedding._id,
       userId: req.user._id,
@@ -295,25 +305,53 @@ export async function claimAdminRole(req, res, next) {
       membership = await Membership.create({
         weddingId: wedding._id,
         userId: req.user._id,
-        role: ROLES.OWNER,
+        role: ROLES.ADMIN,
         status: 'active',
       });
-    } else {
-      membership.role = ROLES.OWNER;
+    } else if (membership.role !== ROLES.OWNER) {
+      membership.role = ROLES.ADMIN;
       await membership.save();
     }
 
-    // Link ownership if seed default
+    // Adopt ownership if this wedding currently has no real owner assigned
     if (!wedding.ownerId || wedding.ownerId === 'user_royal_owner_001') {
       wedding.ownerId = req.user._id;
-      try { await wedding.save(); } catch (e) {}
+      membership.role = ROLES.OWNER;
+      await Promise.all([wedding.save(), membership.save()]);
     }
 
     res.json({
       success: true,
+      message: 'Admin access granted',
       data: {
-        membership,
-        role: ROLES.OWNER,
+        role: membership.role,
+        weddingId: wedding._id,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Update 4-Digit Admin PIN (Accessible only by verified Admin / Owner).
+ */
+export async function updateAdminPin(req, res, next) {
+  try {
+    const { newPin } = req.body;
+    if (!newPin || !/^\d{4}$/.test(newPin.toString().trim())) {
+      return res.status(400).json({ success: false, error: 'PIN must be exactly 4 numeric digits' });
+    }
+
+    const wedding = req.wedding;
+    wedding.adminPin = newPin.toString().trim();
+    await wedding.save();
+
+    res.json({
+      success: true,
+      message: 'Admin PIN updated successfully',
+      data: {
+        adminPin: wedding.adminPin,
       },
     });
   } catch (err) {

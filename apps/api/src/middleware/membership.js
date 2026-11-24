@@ -46,19 +46,12 @@ export function requireWeddingMember(minRole = ROLES.GUEST) {
         userId: req.user._id,
       });
 
-      // Check if user should have OWNER / ADMIN role:
-      // 1. Explicit ownerId match (ObjectId or clerkUserId)
-      // 2. Seed placeholder ownerId ('user_royal_owner_001') or no owner set
-      // 3. Explicit admin portal access via header or query
-      const isAdminPortalAccess = req.headers['x-admin-portal'] === 'true' || req.query.adminPortal === 'true';
+      // Check if user is the designated owner of this wedding
       const isOwnerUser = Boolean(
-        (wedding.ownerId && (
+        wedding.ownerId && (
           wedding.ownerId.toString() === req.user._id.toString() ||
           wedding.ownerId.toString() === req.user.clerkUserId?.toString()
-        )) ||
-        wedding.ownerId === 'user_royal_owner_001' ||
-        !wedding.ownerId ||
-        isAdminPortalAccess
+        )
       );
 
       if (!membership) {
@@ -71,12 +64,6 @@ export function requireWeddingMember(minRole = ROLES.GUEST) {
       } else if (isOwnerUser && membership.role !== ROLES.OWNER && membership.role !== ROLES.ADMIN) {
         membership.role = ROLES.OWNER;
         await membership.save();
-      }
-
-      // If user is owner/admin and wedding had seed owner, adopt ownership
-      if (isOwnerUser && (!wedding.ownerId || wedding.ownerId === 'user_royal_owner_001')) {
-        wedding.ownerId = req.user._id;
-        try { await wedding.save(); } catch (e) {}
       }
 
       // Check if user has sufficient role level

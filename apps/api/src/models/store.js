@@ -66,6 +66,7 @@ export function seedMemoryStore() {
       maxPhotosPerGuest: 200,
       isPrivate: false,
     },
+    adminPin: '1211',
     status: 'active',
     createdAt: new Date(),
     updatedAt: new Date(),

@@ -7,7 +7,8 @@ import {
   getWeddingById,
   updateWedding,
   getWeddingStats,
-  claimAdminRole,
+  verifyAdminPin,
+  updateAdminPin,
 } from '../controllers/weddingController.js';
 import {
   getStorageSettings,
@@ -31,13 +32,14 @@ router.get('/my', getMyWeddings);
 // QR Auto-Join: authenticated user scans QR → instantly joins as guest
 router.post('/slug/:slug/join', joinWeddingByQR);
 
-// Claim or elevate admin permissions
-router.post('/:weddingId/claim-admin', claimAdminRole);
+// Verify 4-digit Admin PIN to unlock admin privileges
+router.post('/:weddingId/verify-pin', verifyAdminPin);
 
 // Member routes
 router.get('/:weddingId', requireWeddingMember(), getWeddingById);
 router.put('/:weddingId', requireAdmin, updateWedding);
 router.get('/:weddingId/stats', requireAdmin, getWeddingStats);
+router.put('/:weddingId/admin-pin', requireAdmin, updateAdminPin);
 
 // Cloud & Google Drive Storage settings routes
 router.get('/:weddingId/storage', requireAdmin, getStorageSettings);
