@@ -458,7 +458,6 @@ export function AdminDashboard() {
                 onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
                 className="w-40 text-center tracking-[0.5em] text-2xl font-bold p-3 rounded-2xl border-2 border-gold/60 focus:border-burgundy focus:ring-2 focus:ring-gold focus:outline-none bg-champagne/15 text-burgundy shadow-inner"
               />
-              <p className="text-[11px] text-gray-500 mt-1.5">Default PIN: 1211</p>
             </div>
             <button
               type="submit"
@@ -1100,13 +1099,13 @@ export function AdminDashboard() {
                     type="password"
                     inputMode="numeric"
                     maxLength={4}
-                    placeholder="Enter 4 digits (e.g. 1211)"
+                    placeholder="Enter 4 digits (e.g. 5829)"
                     value={customPinInput}
                     onChange={(e) => setCustomPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
                     className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gold focus:outline-none bg-white text-gray-900 tracking-widest font-mono"
                   />
                   <p className="text-[10px] text-gray-500 mt-1">
-                    Must be exactly 4 numeric digits. Default is 1211.
+                    Must be exactly 4 numeric digits.
                   </p>
                 </div>
                 <button
