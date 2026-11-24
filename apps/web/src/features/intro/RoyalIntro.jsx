@@ -32,6 +32,13 @@ export function RoyalIntro() {
   const [qrDeactivatedAlert, setQrDeactivatedAlert] = useState(null);
 
   const targetSlug = slug || 'royal-udaipur-2026';
+  const isQRScanned = Boolean(
+    directQRToken ||
+    directEventId ||
+    unlockedEvent ||
+    searchParams.get('scanned') === 'true' ||
+    searchParams.get('venue') === 'true'
+  );
 
   // 1. Fetch Wedding metadata
   useEffect(() => {
@@ -282,7 +289,15 @@ export function RoyalIntro() {
 
         <div className="text-[13px] text-[#F2E8D7] space-y-1 mb-6">
           <p className="font-semibold text-[#F2E8D7] tracking-wide">{formattedDate}</p>
-          <p className="text-[#E8D8BD] font-medium">{wedding.venue || 'City Palace, Lake Pichola, Udaipur'}</p>
+          {isQRScanned ? (
+            <p className="text-[#E8D8BD] font-medium animate-fade-in flex items-center justify-center gap-1.5">
+              <span>📍 {wedding.venue || 'City Palace, Lake Pichola, Udaipur'}</span>
+            </p>
+          ) : (
+            <p className="text-[#E8D8BD] font-medium italic tracking-wide">
+              Capture, Celebrate &amp; Share Every Magical Moment
+            </p>
+          )}
         </div>
 
         {/* Deactivated QR Banner if any */}
