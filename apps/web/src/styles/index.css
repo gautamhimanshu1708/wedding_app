@@ -99,3 +99,53 @@ img {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* Royal Floating Petals & Gold Sparkles Animation */
+@keyframes floatParticle {
+  0% {
+    transform: translateY(0px) rotate(0deg) scale(0.7);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.85;
+  }
+  80% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-220px) rotate(360deg) scale(1.1);
+    opacity: 0;
+  }
+}
+
+.animate-float-particle {
+  animation: floatParticle 5s ease-in-out infinite;
+}
+
+@keyframes pulseGoldGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(226, 202, 146, 0.4)) drop-shadow(0 0 20px rgba(197, 161, 91, 0.2));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 22px rgba(226, 202, 146, 0.8)) drop-shadow(0 0 32px rgba(197, 161, 91, 0.45));
+    transform: scale(1.04);
+  }
+}
+
+.animate-pulse-gold {
+  animation: pulseGoldGlow 3.5s ease-in-out infinite;
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-float-gentle {
+  animation: floatGentle 4s ease-in-out infinite;
+}

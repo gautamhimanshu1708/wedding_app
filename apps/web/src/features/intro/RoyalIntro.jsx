@@ -2,8 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { Crown, Sparkles, ArrowRight, Camera, CheckCircle2, QrCode, AlertCircle, HardDrive } from 'lucide-react';
-import { GoldDivider } from '../../components/common/OrnamentalBorder.jsx';
+import {
+  Crown,
+  Sparkles,
+  ArrowRight,
+  Camera,
+  CheckCircle2,
+  QrCode,
+  AlertCircle,
+  Lock,
+  LogOut,
+} from 'lucide-react';
 import { QRScannerModal } from '../qr/QRScannerModal.jsx';
 
 export function RoyalIntro() {
@@ -12,7 +21,7 @@ export function RoyalIntro() {
   const directEventId = searchParams.get('event');
   const directQRToken = searchParams.get('qr');
   const navigate = useNavigate();
-  const { isAuthenticated, setActiveWedding, user } = useAuth();
+  const { isAuthenticated, setActiveWedding, user, logout } = useAuth();
 
   const [wedding, setWedding] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,22 +39,21 @@ export function RoyalIntro() {
       try {
         setLoading(true);
         const res = await api.get(`/weddings/slug/${targetSlug}`);
-        if (res.success) {
+        if (res.success && res.data) {
           setWedding(res.data);
           setActiveWedding(res.data);
         }
       } catch (err) {
-        console.warn('Wedding slug fetch error, using resilient fallback:', err.message);
-        // Resilient fallback so the wedding space is always accessible
+        console.warn('Wedding slug fetch error, using clean fallback:', err.message);
         const fallbackWedding = {
           _id: 'wedding_royal_udaipur_001',
           id: 'wedding_royal_udaipur_001',
-          title: "Aarav & Diya's Royal Wedding",
+          title: 'Royal Wedding Celebration',
           slug: 'royal-udaipur-2026',
-          coupleNames: { partner1: 'Aarav Sharma', partner2: 'Diya Verma' },
+          coupleNames: { partner1: '', partner2: '' },
           weddingDate: new Date(Date.now() + 14 * 86400000),
           venue: 'City Palace, Lake Pichola, Udaipur',
-          welcomeMessage: 'Padharo mhare des! Welcome to our royal wedding celebrations. Capture and share your cherished moments with us!',
+          welcomeMessage: 'Welcome to our royal wedding celebrations. Capture and share your cherished moments!',
           settings: { allowPublicQR: true, allowGuestUploads: true },
         };
         setWedding(fallbackWedding);
@@ -142,7 +150,16 @@ export function RoyalIntro() {
     );
   }
 
-  const coupleNames = `${wedding.coupleNames?.partner1 || 'Partner 1'} & ${wedding.coupleNames?.partner2 || 'Partner 2'}`;
+  // Display couple names only if actually customized by user, else graceful royal title
+  const p1 = wedding.coupleNames?.partner1?.trim();
+  const p2 = wedding.coupleNames?.partner2?.trim();
+  const hasCustomCouple = p1 && p2 && p1 !== 'Partner 1' && p1 !== 'Aarav Sharma';
+  const displayTitle = hasCustomCouple
+    ? `${p1} & ${p2}`
+    : wedding.title && wedding.title !== "Aarav & Diya's Royal Wedding"
+    ? wedding.title
+    : 'The Royal Wedding';
+
   const formattedDate = wedding.weddingDate
     ? new Date(wedding.weddingDate).toLocaleDateString(undefined, {
         weekday: 'long',
@@ -150,7 +167,7 @@ export function RoyalIntro() {
         month: 'long',
         day: 'numeric',
       })
-    : 'Auspicious Date';
+    : 'Auspicious Celebrations';
 
   return (
     <div
@@ -167,23 +184,56 @@ export function RoyalIntro() {
       <div className="absolute bottom-0 left-0 w-32 h-32 border-b-2 border-l-2 border-gold/40 rounded-tr-full pointer-events-none opacity-40" />
       <div className="absolute bottom-0 right-0 w-32 h-32 border-b-2 border-r-2 border-gold/40 rounded-tl-full pointer-events-none opacity-40" />
 
+      {/* Floating Animated Golden Particles & Sparkles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        {[
+          { left: '10%', delay: '0s', size: 'w-2 h-2' },
+          { left: '22%', delay: '1.2s', size: 'w-2.5 h-2.5' },
+          { left: '38%', delay: '0.5s', size: 'w-1.5 h-1.5' },
+          { left: '55%', delay: '2.4s', size: 'w-2 h-2' },
+          { left: '70%', delay: '1.0s', size: 'w-3 h-3' },
+          { left: '85%', delay: '1.8s', size: 'w-2 h-2' },
+          { left: '15%', delay: '3.0s', size: 'w-2.5 h-2.5' },
+          { left: '78%', delay: '3.6s', size: 'w-1.5 h-1.5' },
+        ].map((p, idx) => (
+          <div
+            key={idx}
+            className="absolute bottom-[-10px] rounded-full bg-gradient-to-t from-gold via-yellow-200 to-white animate-float-particle opacity-80"
+            style={{
+              left: p.left,
+              animationDelay: p.delay,
+              width: p.size.includes('3') ? '8px' : p.size.includes('2.5') ? '6px' : '4px',
+              height: p.size.includes('3') ? '8px' : p.size.includes('2.5') ? '6px' : '4px',
+              boxShadow: '0 0 8px rgba(226, 202, 146, 0.9)',
+            }}
+          />
+        ))}
+      </div>
+
       {/* Top Bar */}
       <div className="flex items-center justify-between z-10 safe-top">
         <div className="flex items-center gap-1.5 text-gold text-xs tracking-widest uppercase font-semibold">
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className="w-4 h-4 text-gold animate-spin-slow" />
           <span>Royal Wedding</span>
         </div>
 
         {isAuthenticated ? (
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-[#E8D8BD] font-medium hidden sm:inline">
-              Welcome, {user?.name || 'Guest'}
+              Guest: {user?.name || 'Signed In'}
             </span>
             <button
-              onClick={() => handleEnterGallery()}
-              className="text-xs text-[#E8D8BD] hover:text-[#FFF6E5] transition font-medium px-3 py-1 rounded-full border border-gold/30 hover:border-gold/60"
+              onClick={async () => {
+                if (logout) await logout();
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.reload();
+              }}
+              className="text-[11px] text-[#E8D8BD]/90 hover:text-red-300 transition font-medium px-2.5 py-1 rounded-full border border-gold/30 bg-burgundy/40 flex items-center gap-1"
+              title="Sign out of current account"
             >
-              All Photos →
+              <LogOut className="w-3 h-3" />
+              <span>Sign Out</span>
             </button>
           </div>
         ) : (
@@ -191,15 +241,21 @@ export function RoyalIntro() {
             onClick={() => navigate(`/auth?redirect=/live&slug=${targetSlug}`)}
             className="text-xs text-[#E8D8BD] hover:text-[#FFF6E5] transition font-medium px-3 py-1.5 rounded-full border border-gold/40 bg-gold/10"
           >
-            Guest Login
+            Sign In
           </button>
         )}
       </div>
 
-      {/* Main Royal Card */}
+      {/* Centerpiece: Royal Invitation & Entry Card */}
       <div className="my-auto z-10 max-w-sm mx-auto text-center py-4 px-3 w-full">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gold/15 border border-gold/60 text-gold mb-4 shadow-gold-glow animate-pulse">
-          <Crown className="w-8 h-8" />
+        {/* Animated Royal Crest with Glowing Aura */}
+        <div className="relative inline-flex items-center justify-center mb-4">
+          <div className="absolute inset-0 rounded-full bg-gold/20 blur-xl animate-pulse-gold scale-125" />
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-goldDark via-gold to-goldLight p-[2px] shadow-gold-glow animate-float-gentle">
+            <div className="w-full h-full rounded-full bg-burgundyDark flex items-center justify-center border border-gold/40">
+              <Crown className="w-10 h-10 text-gold drop-shadow-[0_2px_8px_rgba(226,202,146,0.6)]" />
+            </div>
+          </div>
         </div>
 
         <p className="text-[11px] uppercase tracking-[0.25em] text-[#E8D8BD] font-semibold mb-2">
@@ -215,12 +271,12 @@ export function RoyalIntro() {
             color: '#E2CA92',
           }}
         >
-          {coupleNames}
+          {displayTitle}
         </h1>
 
-        <div className="text-[13px] text-[#F2E8D7] space-y-1 mb-5">
+        <div className="text-[13px] text-[#F2E8D7] space-y-1 mb-6">
           <p className="font-semibold text-[#F2E8D7] tracking-wide">{formattedDate}</p>
-          <p className="text-[#E8D8BD] font-medium">{wedding.venue}</p>
+          <p className="text-[#E8D8BD] font-medium">{wedding.venue || 'City Palace, Lake Pichola, Udaipur'}</p>
         </div>
 
         {/* Deactivated QR Banner if any */}
@@ -231,95 +287,65 @@ export function RoyalIntro() {
           </div>
         )}
 
-        {/* UNLOCKED EVENT STATE */}
+        {/* UNLOCKED EVENT BANNER IF SCANNED */}
         {unlockedEvent ? (
-          <div className="bg-gradient-to-b from-burgundyLight/80 to-burgundy/90 border-2 border-gold p-5 rounded-3xl shadow-royal mb-4 text-center animate-fade-in">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-green-500/20 text-green-400 mb-2 border border-green-400/40">
-              <CheckCircle2 className="w-5 h-5" />
+          <div className="bg-gradient-to-b from-burgundyLight/80 to-burgundy/90 border-2 border-gold p-4 rounded-2xl shadow-royal mb-4 text-center animate-fade-in">
+            <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500/20 text-green-400 mb-1 border border-green-400/40">
+              <CheckCircle2 className="w-4 h-4" />
             </div>
-            <p className="text-[11px] text-[#E8D8BD] uppercase font-bold tracking-wider">
+            <p className="text-[10px] text-[#E8D8BD] uppercase font-bold tracking-wider">
               Ceremony Unlocked
             </p>
-            <h3 className="font-royal text-xl font-bold text-gold mt-0.5">
+            <h3 className="font-royal text-base font-bold text-gold">
               {unlockedEvent.name}
             </h3>
-            {unlockedEvent.description && (
-              <p className="text-xs text-[#E8D8BD]/90 mt-1 line-clamp-2">
-                {unlockedEvent.description}
-              </p>
-            )}
-
-            <button
-              onClick={() => handleEnterGallery(unlockedEvent.id)}
-              disabled={joining}
-              style={{
-                background: 'linear-gradient(135deg, #FFF3D6 0%, #E2CA92 40%, #C5A15B 100%)',
-                color: '#2B0E17',
-              }}
-              className="mt-4 w-full py-3.5 px-4 rounded-xl font-bold text-xs shadow-royal-lg hover:brightness-105 active:scale-95 transition flex items-center justify-center gap-1.5"
-            >
-              <span>{joining ? 'Entering...' : `Enter ${unlockedEvent.name} Photos`}</span>
-              <ArrowRight className="w-4 h-4 text-[#2B0E17]" />
-            </button>
           </div>
-        ) : (
-          /* NO EVENT SELECTED YET - SCANNER PROMPT */
-          <div
-            className="border border-[#C5A15B]/40 rounded-3xl p-5 mb-5 shadow-2xl backdrop-blur-md"
+        ) : null}
+
+        {/* PRIMARY ACTIONS: Login as Guest + Camera Scan */}
+        <div className="space-y-3 max-w-xs mx-auto">
+          {/* Main "Login as Guest" Button */}
+          <button
+            onClick={() => handleEnterGallery()}
+            disabled={joining}
             style={{
-              backgroundColor: 'rgba(32, 12, 18, 0.75)',
+              background: 'linear-gradient(135deg, #FFF3D6 0%, #E2CA92 35%, #C5A15B 70%, #A6843D 100%)',
+              color: '#2B0E17',
+              boxShadow: '0 0 25px rgba(226, 202, 146, 0.45), 0 8px 24px rgba(0,0,0,0.5)',
             }}
+            className="w-full py-4 px-6 rounded-2xl font-bold text-sm shadow-royal-lg hover:brightness-110 active:scale-95 transition flex items-center justify-center gap-2.5 group border-2 border-gold/60"
           >
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#C5A15B]/20 text-[#E2CA92] border border-[#C5A15B]/50 mb-3 shadow-royal">
-              <QrCode className="w-6 h-6 text-[#E2CA92]" />
-            </div>
+            <Sparkles className="w-5 h-5 text-[#2B0E17] shrink-0" />
+            <span className="tracking-wide text-sm font-extrabold uppercase">
+              {joining ? 'Opening Celebration...' : 'Login as Guest'}
+            </span>
+            <ArrowRight className="w-4 h-4 text-[#2B0E17] group-hover:translate-x-1 transition-transform shrink-0" />
+          </button>
 
-            <h3 className="font-royal text-lg font-bold text-[#E2CA92] mb-1.5">
-              No Ceremony Selected Yet
-            </h3>
-            <p className="text-xs text-[#F2E8D7] font-normal leading-relaxed max-w-xs mx-auto mb-4">
-              To view &amp; upload photographs for a ceremony, please scan the QR code placed at your venue table or event banner.
-            </p>
+          {/* Scan Venue QR Code Option */}
+          <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className="w-full py-3 px-4 rounded-xl text-xs font-semibold border border-gold/30 bg-burgundy/50 hover:bg-burgundy/80 text-[#E8D8BD] hover:text-white flex items-center justify-center gap-2 transition"
+          >
+            <Camera className="w-4 h-4 text-gold" />
+            <span>Scan Ceremony QR at Venue</span>
+          </button>
+        </div>
 
-            {/* In-Browser QR Scanner Button */}
-            <button
-              type="button"
-              onClick={() => setScannerOpen(true)}
-              style={{
-                backgroundColor: '#D4AF37',
-                backgroundImage: 'linear-gradient(135deg, #FFF3D6 0%, #E2CA92 40%, #C5A15B 100%)',
-                color: '#2B0E17',
-              }}
-              className="w-full py-3.5 px-5 rounded-2xl font-bold text-xs shadow-royal-lg hover:brightness-105 active:scale-95 transition flex items-center justify-center gap-2"
-            >
-              <Camera className="w-4 h-4 text-[#2B0E17] stroke-[2.5]" />
-              <span className="tracking-wide">Scan Ceremony QR at Venue</span>
-            </button>
-          </div>
-        )}
-
-        {/* Secondary: General Wedding Photos Feed */}
-        <button
-          onClick={() => handleEnterGallery()}
-          disabled={joining}
-          className="text-xs text-[#E8D8BD] hover:text-[#FFF6E5] transition font-semibold flex items-center justify-center gap-1.5 mx-auto hover:underline"
-        >
-          <span>Or explore the general wedding photo feed →</span>
-        </button>
-
-        {/* Couple & Admin Portal Entry */}
-        <div className="mt-5 pt-4 border-t border-[#C5A15B]/25">
+        {/* Organizer / Admin Portal Link (PIN Protected) */}
+        <div className="mt-6 pt-4 border-t border-[#C5A15B]/20">
           <button
             onClick={() => navigate('/auth?redirect=/admin')}
-            className="text-xs text-[#E8D8BD] hover:text-[#FFF6E5] transition flex items-center justify-center gap-1.5 mx-auto font-medium"
+            className="text-xs text-[#E8D8BD]/80 hover:text-gold transition flex items-center justify-center gap-1.5 mx-auto font-medium"
           >
-            <Crown className="w-3.5 h-3.5 text-[#C5A15B]" />
-            <span>Couple / Admin Portal Login</span>
+            <Lock className="w-3.5 h-3.5 text-gold/80" />
+            <span>Couple &amp; Organizer Access (PIN Protected)</span>
           </button>
         </div>
       </div>
 
-      <footer className="text-center text-[11px] text-[#E8D8BD]/80 font-medium z-10 safe-pb">
+      <footer className="text-center text-[11px] text-[#E8D8BD]/70 font-medium z-10 safe-pb">
         <p>Royal Wedding Photo Sharing Platform • Fast &amp; Private</p>
       </footer>
 
