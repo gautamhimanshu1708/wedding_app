@@ -5,9 +5,9 @@ export const createWeddingSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(100),
   slug: z.string().min(3).max(60).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens'),
   coupleNames: z.object({
-    partner1: z.string().min(2, 'Partner 1 name is required').max(50),
-    partner2: z.string().min(2, 'Partner 2 name is required').max(50),
-  }),
+    partner1: z.string().max(50).optional().default(''),
+    partner2: z.string().max(50).optional().default(''),
+  }).optional(),
   weddingDate: z.string().or(z.date()),
   venue: z.string().min(2, 'Venue is required').max(120),
   coverImage: z.string().url().optional().or(z.literal('')),

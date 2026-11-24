@@ -8,8 +8,8 @@ const weddingSchema = new mongoose.Schema(
     slug: { type: String, required: true, unique: true, index: true },
     ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, default: null },
     coupleNames: {
-      partner1: { type: String, required: true },
-      partner2: { type: String, required: true },
+      partner1: { type: String, default: '', trim: true },
+      partner2: { type: String, default: '', trim: true },
     },
     weddingDate: { type: Date, required: true },
     venue: { type: String, required: true },

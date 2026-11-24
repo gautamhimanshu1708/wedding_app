@@ -19,15 +19,16 @@ async function run() {
     { slug: 'royal-udaipur-2026' },
     {
       $set: {
-        title: 'ShadiVibes Wedding Celebration',
-        coupleNames: { partner1: '', partner2: '' },
-        weddingDate: new Date(),
-        venue: 'City Palace, Lake Pichola, Udaipur',
-        adminPin: '1211',
+        title: 'Aatithi devo bahva',
+        coupleNames: { partner1: 'Deepika', partner2: 'Sunmeet' },
+        venue: 'Fern recidency Bodhgaya',
+        weddingDate: new Date('2026-12-09T18:00:00Z'),
+        welcomeMessage:
+          'Padharo mhare des! Welcome to our royal wedding celebrations. We invite you to capture and share all the cherished memories of our union.',
       },
     }
   );
-  console.log('Updated wedding document with ShadiVibes and current date:', res.modifiedCount);
+  console.log('Saved Deepika & Sunmeet settings into MongoDB Atlas:', res.modifiedCount);
   await mongoose.disconnect();
   process.exit(0);
 }
