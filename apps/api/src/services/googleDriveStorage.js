@@ -154,27 +154,31 @@ export async function driveUpload(buffer, fileName, mimeType = 'image/jpeg', wed
     requestBody: fileMetadata,
     media,
     fields: 'id, name, webViewLink, webContentLink',
+    supportsAllDrives: true,
   });
+
+  // Make file publicly readable so it renders directly in the web app
+  try {
+    await drive.permissions.create({
+      fileId: response.data.id,
+      requestBody: { role: 'reader', type: 'anyone' },
+      supportsAllDrives: true,
+    });
+  } catch (permErr) {
+    // Non-critical: parent folder permissions may already cover it
+  }
 
   return response.data;
 }
 
 /**
  * Get a direct public URL for a Drive file
+ * Using Google's direct CDN format lh3.googleusercontent.com/d/{fileId}
+ * allows instant loading in <img> tags without Google auth redirects or cookie barriers.
  */
 export async function driveGetUrl(fileId, wedding = null) {
-  const clientInfo = await getDriveClient(wedding);
-  if (!clientInfo || !clientInfo.drive || !fileId) return null;
-
-  try {
-    await clientInfo.drive.permissions.create({
-      fileId,
-      requestBody: { role: 'reader', type: 'anyone' },
-    });
-    return `https://drive.google.com/uc?export=view&id=${fileId}`;
-  } catch (err) {
-    return `https://drive.google.com/file/d/${fileId}/view`;
-  }
+  if (!fileId) return null;
+  return `https://lh3.googleusercontent.com/d/${fileId}`;
 }
 
 /**
@@ -200,7 +204,13 @@ async function ensureSubfolder(drive, parentFolderId, subfolderName) {
 
   try {
     const query = `name='${cleanName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed=false`;
-    const existing = await drive.files.list({ q: query, fields: 'files(id, name)', spaces: 'drive' });
+    const existing = await drive.files.list({
+      q: query,
+      fields: 'files(id, name)',
+      spaces: 'drive',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
 
     if (existing.data.files?.length > 0) {
       return existing.data.files[0].id;
@@ -213,6 +223,7 @@ async function ensureSubfolder(drive, parentFolderId, subfolderName) {
         parents: [parentFolderId],
       },
       fields: 'id',
+      supportsAllDrives: true,
     });
 
     return folder.data.id;

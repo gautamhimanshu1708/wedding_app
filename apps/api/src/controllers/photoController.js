@@ -170,7 +170,7 @@ export async function uploadDirect(req, res, next) {
         const thumbKey = `weddings/${weddingId}/photos/${photoId}/Thumb_${shortId}.webp`;
 
         // 2. Persist to Cloudflare R2 / Google Drive / Local Storage
-        await Promise.all([
+        const [savedOriginalKey, savedDisplayKey, savedThumbKey] = await Promise.all([
           StorageService.putObject(originalKey, processed.originalBuffer, file.mimetype, req.wedding, ceremonyName),
           StorageService.putObject(displayKey, processed.displayBuffer, 'image/webp', req.wedding, ceremonyName),
           StorageService.putObject(thumbKey, processed.thumbnailBuffer, 'image/webp', req.wedding, ceremonyName),
@@ -181,9 +181,9 @@ export async function uploadDirect(req, res, next) {
           weddingId,
           eventId: targetEvent._id,
           uploadedBy: req.user._id,
-          originalObjectKey: originalKey,
-          displayObjectKey: displayKey,
-          thumbnailObjectKey: thumbKey,
+          originalObjectKey: savedOriginalKey || originalKey,
+          displayObjectKey: savedDisplayKey || displayKey,
+          thumbnailObjectKey: savedThumbKey || thumbKey,
           mimeType: 'image/webp',
           sizeBytes: processed.displayBuffer.length,
           width: processed.width,
