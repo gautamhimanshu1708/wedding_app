@@ -101,16 +101,22 @@ export async function clerkSync(req, res, next) {
  */
 export async function devGuestLogin(req, res, next) {
   try {
-    const { name = 'Royal Guest', email } = req.body;
+    const rawName = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const name = rawName || 'Royal Guest';
+    const normalizedEmail = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     let user;
 
-    if (email) {
-      user = await User.findOne({ email });
+    if (normalizedEmail) {
+      user = await User.findOne({ email: normalizedEmail });
+      if (user && rawName && user.name !== rawName) {
+        user.name = rawName;
+        await user.save();
+      }
     }
 
     if (!user) {
       const guestId = `guest_${Math.random().toString(36).substring(2, 10)}`;
-      const guestEmail = email || `${guestId}@royalwedding.local`;
+      const guestEmail = normalizedEmail || `${guestId}@royalwedding.local`;
 
       user = await User.create({
         clerkUserId: guestId,

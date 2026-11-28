@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ClerkProvider } from '@clerk/react';
-import { AuthProvider, PAUSE_LOGIN } from './context/AuthContext.jsx';
+import { AuthProvider, IS_CLERK_ENABLED } from './context/AuthContext.jsx';
 import App from './App.jsx';
 import './styles/index.css';
 
@@ -28,7 +28,7 @@ if (typeof window !== 'undefined') {
 // If Clerk key is present and login is NOT paused, wrap with ClerkProvider
 // Otherwise fall back to frictionless local bypass testing
 function AppRoot() {
-  if (CLERK_PUBLISHABLE_KEY && !PAUSE_LOGIN) {
+  if (IS_CLERK_ENABLED) {
     return (
       <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/w/royal-udaipur-2026">
         <QueryClientProvider client={queryClient}>

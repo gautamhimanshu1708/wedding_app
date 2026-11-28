@@ -268,6 +268,7 @@ function GuestAuthProvider({ children }) {
 }
 
 export const PAUSE_LOGIN = false; // Restored Clerk login
+export const IS_CLERK_ENABLED = Boolean(CLERK_KEY) && !PAUSE_LOGIN;
 
 // ─── Local Bypass Provider (Login Paused for Frictionless Local Testing) ───────
 function LocalBypassAuthProvider({ children }) {
@@ -405,7 +406,7 @@ function LocalBypassAuthProvider({ children }) {
 
 export function AuthProvider({ children }) {
   if (PAUSE_LOGIN) return <LocalBypassAuthProvider>{children}</LocalBypassAuthProvider>;
-  if (CLERK_KEY) return <ClerkAuthProvider>{children}</ClerkAuthProvider>;
+  if (IS_CLERK_ENABLED) return <ClerkAuthProvider>{children}</ClerkAuthProvider>;
   return <GuestAuthProvider>{children}</GuestAuthProvider>;
 }
 
